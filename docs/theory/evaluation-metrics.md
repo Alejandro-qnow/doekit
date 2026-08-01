@@ -1,0 +1,59 @@
+# Evaluation metrics
+
+## Motivation
+
+This is doekit's differentiator. Building a design is easy; knowing whether it will
+actually answer your question — before spending a single expensive run — is the hard
+part that JMP and Design-Expert charge for. The evaluation layer certifies a design
+against the theoretical optimum. Everything is computed in **coded units**.
+
+## Theory
+
+Let $X$ be the $N \times p$ model matrix and $M = X^\top X$.
+
+**Relative efficiencies** (as percentages, 100% = ideal):
+
+$$
+D_\text{eff} = 100\,\frac{\det(M)^{1/p}}{N}, \qquad
+A_\text{eff} = 100\,\frac{p}{N\,\operatorname{tr}(M^{-1})} .
+$$
+
+**Scaled prediction variance (SPV)** at a point $x$ measures how precisely the model
+predicts there:
+
+$$
+\text{SPV}(x) = N\, x^\top M^{-1} x .
+$$
+
+The general equivalence theorem gives $\max_x \text{SPV}(x) \ge p$, so
+$G_\text{eff} = 100\,p / \max_x \text{SPV}(x)$. Sorting the SPV over a sample of the
+region and plotting it against the cumulative fraction gives the **Fraction of Design
+Space (FDS) plot** — the gold standard: a low, flat curve means uniform, precise
+prediction everywhere.
+
+**Power** for coefficient $\beta_i$ uses the non-central $t$ with non-centrality
+$\delta_i = \text{effect size} / (\sigma\sqrt{(M^{-1})_{ii}})$ and $N-p$ degrees of
+freedom — the probability of detecting an effect of the anticipated size.
+
+**VIF** $= 1/(1 - R_j^2)$ flags multicollinearity ($1$ = orthogonal). The **alias
+matrix** $A = (X_1^\top X_1)^{-1} X_1^\top X_2$ quantifies the bias
+$\mathbb{E}[\hat\beta_1] = \beta_1 + A\beta_2$ from omitted terms $X_2$.
+
+## In doekit
+
+```python
+import doekit as ed
+
+bb = ed.box_behnken({"temp": (20, 80), "ph": (3, 9), "conc": (0.1, 0.5)})
+ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
+print(ev.summary())               # D/A/G, SPV, power, VIF
+
+ed.plotting.fds_plot(bb)          # Fraction of Design Space
+ed.plotting.power_plot(ev.power)
+ed.alias_matrix(bb)               # bias from omitted 2FI
+```
+
+## See also
+
+- Theory: [Reporting](reporting.md), [Optimal design](optimal-design.md)
+- API: [`evaluate`, `efficiencies`, `power_analysis`, `vif`, `alias_matrix`, `fds_data`](../api/evaluation.md)

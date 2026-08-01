@@ -1,0 +1,28 @@
+# Notebooks
+
+The repository ships eight explanatory notebooks (`notebooks/`) that narrate the
+*why* of the methodological decisions, show the data and its distributions, and
+produce analysis plots. Run them with `uv run jupyter lab` from the project root.
+
+| # | Notebook | Use case | Capabilities |
+|---|----------|----------|--------------|
+| 01 | `01_screening_factores` | Identify the influential factors among 7 candidates in 8 runs | `plackett_burman`, `main_effects`, `half_normal_plot`, `fold` |
+| 02 | `02_superficie_respuesta` | Optimize the yield of a 3-factor process | `box_behnken`, `central_composite`, `fit_linear_model` |
+| 03 | `03_diseno_optimo` | D/A/I-optimal design in an irregular region with a fixed budget | `optimal_design` (KL + Fedorov), `d_criterion` |
+| 04 | `04_quimica_optimizacion_reaccion` | **[Chemistry]** Optimize a reaction end-to-end, benchmarked against ground truth and random sampling | `fractional_factorial`, `box_behnken`, `evaluate`, `alias_matrix`, `fds_plot` |
+| 05 | `05_optimizacion_diseno_optimo` | **[Optimization]** A D-optimal design beats random sampling as a surrogate in a constrained region | `optimal_design`, `efficiencies`, `fds_plot` |
+| 06 | `06_machine_learning_tuning` | **[ML]** Hyperparameter tuning: DoE beats random search at equal budget and says which knobs matter | `definitive_screening`, `main_effects`, `box_behnken` |
+| 07 | `07_quantum_ml_feature_map` | **[Quantum ML]** Screen a quantum feature map / kernel with minimal circuit evaluations (each = QPU time) | `definitive_screening`, `evaluate`, `central_composite` |
+| 08 | `08_asesor_casos` | **[Gallery]** The `recommend_design` advisor across 6 cases side by side | `recommend_design`, `Recommendation` |
+
+Notebooks **04–07** share the **build → evaluate → benchmark** pattern: each uses a
+known ground-truth function to measure how well the DoE recovers the optimum, and
+compares it against a baseline (random / grid / random search). They are the
+empirical argument for why doekit is useful where each experiment is expensive.
+
+Notebooks are versioned **with their executed outputs**, so they read without running
+anything. Regenerate with:
+
+```bash
+uv run jupyter nbconvert --execute --inplace notebooks/*.ipynb
+```

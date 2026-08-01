@@ -1,0 +1,50 @@
+# Fractional factorial designs
+
+## Motivation
+
+A full factorial in $k$ two-level factors costs $2^k$ runs — 1024 for ten factors.
+When you are willing to trade some information about high-order interactions (rarely
+active) for a drastic cut in runs, a **fractional factorial** $2^{k-p}$ runs only a
+carefully chosen fraction, with a *known* confounding structure.
+
+## Theory
+
+Pick $p$ **generators** that define the extra factors as products of the base ones,
+e.g. $D = AB$, $E = AC$. Each generator gives a **word** ($ABD$, $ACE$); the set of
+all products of words (under the symmetric difference / XOR) forms the **defining
+relation**:
+
+$$
+I = ABD = ACE = BCDE .
+$$
+
+The **resolution** $R$ is the length of the shortest word. It summarizes what is
+confounded with what:
+
+| Resolution | Main effects aliased with | Reading |
+|---|---|---|
+| III | 2-factor interactions | cheap screening, risky if 2FI active |
+| IV  | 3-factor interactions | main effects clean; 2FI aliased among themselves |
+| V   | 4-factor interactions | main effects and 2FI both clean |
+
+Aliased effects share an **alias class**; you estimate the sum, not the individuals.
+**Folding** — appending the sign-reflected design — de-aliases main effects from
+two-factor interactions, raising the resolution.
+
+## In doekit
+
+```python
+import doekit as ed
+
+fr = ed.fractional_factorial(5, generators=["D=AB", "E=AC"])   # 2^(5-2) = 8 runs
+fr.metadata["defining_relation"]   # 'I = ABD = ACE = BCDE'
+fr.metadata["resolution"]          # 'III'
+fr.metadata["aliases"]             # alias classes
+
+folded = ed.fold(fr)               # de-confounds main effects from 2FI
+```
+
+## See also
+
+- Theory: [Screening (Plackett-Burman)](screening-plackett-burman.md)
+- API: [`fractional_factorial`, `full_factorial`, `fold`](../api/designs.md)

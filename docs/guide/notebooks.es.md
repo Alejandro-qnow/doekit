@@ -1,0 +1,29 @@
+# Notebooks
+
+El repositorio incluye ocho notebooks explicativos (`notebooks/`) que narran el *por
+qué* de las decisiones metodológicas, muestran los datos y sus distribuciones, y
+producen gráficas del análisis. Ejecútalos con `uv run jupyter lab` desde la raíz del
+proyecto.
+
+| # | Notebook | Caso de uso | Capacidades |
+|---|----------|-------------|-------------|
+| 01 | `01_screening_factores` | Identificar los factores influyentes entre 7 candidatos en 8 corridas | `plackett_burman`, `main_effects`, `half_normal_plot`, `fold` |
+| 02 | `02_superficie_respuesta` | Optimizar el rendimiento de un proceso de 3 factores | `box_behnken`, `central_composite`, `fit_linear_model` |
+| 03 | `03_diseno_optimo` | Diseño D/A/I-óptimo en una región irregular con presupuesto fijo | `optimal_design` (KL + Fedorov), `d_criterion` |
+| 04 | `04_quimica_optimizacion_reaccion` | **[Química]** Optimizar una reacción de punta a punta, con benchmark contra la verdad y contra muestreo aleatorio | `fractional_factorial`, `box_behnken`, `evaluate`, `alias_matrix`, `fds_plot` |
+| 05 | `05_optimizacion_diseno_optimo` | **[Optimización]** Un diseño D-óptimo bate al azar como surrogate en una región restringida | `optimal_design`, `efficiencies`, `fds_plot` |
+| 06 | `06_machine_learning_tuning` | **[ML]** Tuning de hiperparámetros: el DoE supera a random search a presupuesto igual y dice qué perillas importan | `definitive_screening`, `main_effects`, `box_behnken` |
+| 07 | `07_quantum_ml_feature_map` | **[ML cuántico]** Screening de un feature map / kernel cuántico con mínimas evaluaciones de circuito (cada una = tiempo de QPU) | `definitive_screening`, `evaluate`, `central_composite` |
+| 08 | `08_asesor_casos` | **[Galería]** El asesor `recommend_design` en 6 casos lado a lado | `recommend_design`, `Recommendation` |
+
+Los notebooks **04–07** comparten el patrón **construir → evaluar → benchmarkear**:
+cada uno usa una función-verdad conocida para medir qué tan bien el DoE recupera el
+óptimo, y lo compara contra un baseline (aleatorio / grid / random search). Son el
+argumento empírico de por qué doekit es útil donde cada experimento es caro.
+
+Los notebooks están versionados **con sus salidas ejecutadas**, así que se leen sin
+correr nada. Regenéralos con:
+
+```bash
+uv run jupyter nbconvert --execute --inplace notebooks/*.ipynb
+```

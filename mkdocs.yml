@@ -1,0 +1,115 @@
+site_name: doekit
+site_description: >-
+  Design of Experiments (DoE) in Python — screening, response surface,
+  optimal design, and a design-evaluation/benchmarking layer.
+repo_url: https://github.com/qnowtech/doekit
+repo_name: qnowtech/doekit
+copyright: MIT License
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - toc.follow
+    - search.suggest
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          nav_translations:
+            Home: Inicio
+            Theory: Teoría
+            Factors & coding: Factores y codificación
+            Fractional factorial: Factorial fraccional
+            Response surface: Superficie de respuesta
+            Optimal design: Diseño óptimo
+            Evaluation metrics: Métricas de evaluación
+            Reporting: Reporte
+            Guide: Guía
+            API reference: Referencia de API
+            Overview: Resumen
+            Factors & model: Factores y modelo
+            Designs: Diseños
+            Evaluation: Evaluación
+            Analysis & report: Análisis y reporte
+  - autorefs:
+      resolve_closest: true
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            separate_signature: true
+            merge_init_into_class: true
+            heading_level: 2
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Theory:
+      - Factors & coding: theory/factors-and-coding.md
+      - Screening (Plackett-Burman): theory/screening-plackett-burman.md
+      - Fractional factorial: theory/fractional-factorial.md
+      - Definitive screening: theory/definitive-screening.md
+      - Response surface: theory/response-surface.md
+      - Optimal design: theory/optimal-design.md
+      - Evaluation metrics: theory/evaluation-metrics.md
+      - Reporting: theory/reporting.md
+  - Guide:
+      - Notebooks: guide/notebooks.md
+  - API reference:
+      - Overview: api/index.md
+      - Factors & model: api/factors-model.md
+      - Designs: api/designs.md
+      - Evaluation: api/evaluation.md
+      - Analysis & report: api/analysis-report.md

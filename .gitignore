@@ -1,0 +1,29 @@
+# Referencia vendorizada (solo lectura, no se versiona)
+reference/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+project/
+.env
+scripts/
+
+# uv / entornos
+.venv/
+
+# Sitio de documentacion generado (mkdocs)
+site/
+
+# Artefactos de ejemplos
+examples/*.png
+
+# Reportes HTML generados (folder default y modo autocontenido)
+report/
+reports/
+examples/reports/
+.claude/

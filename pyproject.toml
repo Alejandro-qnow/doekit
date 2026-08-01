@@ -1,0 +1,107 @@
+[project]
+name = "doekit"
+dynamic = ["version"]
+description = "Design of Experiments (DoE) en Python: screening, factoriales, superficie de respuesta, diseno optimo (D/A/I) y evaluacion de calidad de disenos."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Alejandro Giraldo Londono", email = "alejandro@qnow.tech" },
+]
+keywords = [
+    "design-of-experiments",
+    "doe",
+    "optimal-design",
+    "plackett-burman",
+    "response-surface",
+    "screening",
+    "statistics",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "scipy>=1.9",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.6"]
+report = ["matplotlib>=3.6"]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.24",
+    "mkdocs-static-i18n>=1.2",
+    "ruff>=0.4",
+]
+dev = [
+    "pytest>=7.0",
+    "matplotlib>=3.6",
+    "nbformat>=5.9",
+    "nbconvert>=7.0",
+    "ipykernel>=6.25",
+    "build>=1.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/qnowtech/doekit"
+Repository = "https://github.com/qnowtech/doekit"
+Issues = "https://github.com/qnowtech/doekit/issues"
+Changelog = "https://github.com/qnowtech/doekit/blob/master/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "doekit/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["doekit"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "doekit",
+    "tests",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# --- Indices de publicacion (uv) ---
+# Publicar en TestPyPI:  uv publish --index testpypi
+# Publicar en PyPI:      uv publish            (usa el indice por defecto)
+
+# TestPyPI (pruebas)
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+default = false
+
+# PyPI oficial (por defecto)
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+publish-url = "https://upload.pypi.org/legacy/"
+explicit = false
+default = true

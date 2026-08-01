@@ -1,0 +1,169 @@
+# doekit
+
+**Design of Experiments (DoE) en Python**: screening, factoriales, superficie de respuesta y diseño óptimo (D/A/I). 
+
+Solo depende de `numpy`, `pandas` y `scipy`. `matplotlib` es opcional (gráficos).
+
+- **Documentación (bilingüe EN/ES):** fuente en [`docs/`](docs/) (MkDocs) — introducción,
+  teoría de cada metodología y referencia de API.
+- **Notebooks de casos de uso:** [`notebooks/`](notebooks/)
+
+## Instalación
+
+```bash
+pip install doekit            # núcleo
+pip install "doekit[plot]"    # con gráficos (matplotlib)
+```
+
+Desde el repositorio, para desarrollo:
+
+```bash
+uv sync --extra dev                        # entorno completo (pytest + matplotlib + build)
+# o con pip:
+pip install -e ".[dev,plot]"
+```
+
+## Uso rápido
+
+```python
+import doekit as ed
+
+# --- Screening: Plackett-Burman para 6 factores en 8 corridas ---
+pb = ed.plackett_burman(6)
+ed.is_plackett_burman(pb)          # True (ortogonal, cada columna suma cero)
+
+# Factorial fraccional REAL 2^(3-1) con estructura de alias
+fr = ed.fractional_factorial(3, generators=["C=AB"])
+fr.metadata["defining_relation"]   # 'I = ABC'
+fr.metadata["resolution"]          # 'III'
+fr.metadata["aliases"]             # [['factor1', 'factor2:factor3'], ...]
+
+# --- Superficie de respuesta en unidades naturales ---
+bb = ed.box_behnken({"temp": (20, 80), "ph": (3, 9), "conc": (0.1, 0.5)})
+cc = ed.central_composite(3)       # alpha ortogonal ~ 1.826
+
+# --- Diseño D-óptimo desde un candidate set (KL-exchange) ---
+cand = ed.random_design([ed.ContinuousFactor("x1", -1, 1),
+                         ed.ContinuousFactor("x2", -1, 1)], n=200, seed=0)
+cand.model = ed.Model.parse("0 ~ x1 + x2 + x1:x2")
+opt = ed.optimal_design(cand, n_runs=12, criterion="D", n_starts=5, seed=1)
+opt.metadata["criteria"]           # {'D': ..., 'A': ..., 'I': ...}
+
+# --- Análisis: efectos y ajuste lineal ---
+y = ...                            # respuestas medidas por corrida
+effects = ed.main_effects(pb, y, scale="effect")   # efecto clásico = 2·beta
+fit = ed.fit_linear_model(pb, y)
+fit.summary_frame()                # DataFrame con estimate/std_error/t/p
+```
+
+Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
+`.metadata` y utilidades (`.n_runs`, `.model_matrix()`, `repr` informativo).
+
+## Capacidades
+
+
+| Categoría                     | Funciones                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| Screening                     | `plackett_burman`, `fractional_factorial`, `fold`, `is_plackett_burman`                           |
+| Factoriales                   | `full_factorial` (explícito y perezoso)                                                           |
+| Superficie de respuesta       | `box_behnken`, `central_composite`                                                                |
+| Aleatorios                    | `random_design`, `latin_hypercube`                                                                |
+| Screening moderno             | `definitive_screening` (Definitive Screening Designs, Jones & Nachtsheim)                         |
+| Óptimos                       | `optimal_design` (D/A/I vía KL-exchange o Fedorov, multi-arranque)                                |
+| Criterios                     | `d/a/t/g/e/i_criterion`                                                                           |
+| **Evaluación / benchmarking** | `evaluate`, `efficiencies`, `power_analysis`, `alias_matrix`, `vif`, `fds_data`                   |
+| **Reporte**                   | `report` (HTML autocontenido: metodología, calidad, resultados, anomalías, recomendaciones)       |
+| **Asesor**                    | `recommend_design` (reglas + evaluación: recomienda el mejor método para el caso)                 |
+| Factores                      | `ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor` (codificación natural↔codificada)       |
+| Modelo                        | `Model.parse`, `Model.full_quadratic`, `Model.main_effects`                                       |
+| Análisis                      | `fit_linear_model`, `main_effects`, `half_normal_data`                                            |
+| Gráficos                      | `half_normal_plot`, `effects_plot`, `correlation_plot`, `fds_plot`, `power_plot`, `alias_heatmap` |
+
+
+## Lo que nos distingue: evaluar el diseño, no solo construirlo
+
+La mayoría de las librerías Python de DoE (`pyDOE3`, `dexpy`) **solo generan**
+diseños. `doekit` además les da un **boletín de calidad** reproducible que
+responde *"¿qué tan lejos está mi diseño del óptimo teórico?"* — lo que en las
+herramientas comerciales (JMP, Design-Expert) es la mitad del trabajo:
+
+```python
+import doekit as ed
+
+bb = ed.box_behnken({"temp": (20, 80), "ph": (3, 9), "conc": (0.1, 0.5)})
+report = ed.evaluate(bb, effect_size=1.0, sigma=1.0)   # tamaño de efecto anticipado
+print(report.summary())
+#   D-efficiency : 36.6 %   A-efficiency : 29.4 %   G-efficiency : 51.7 %
+#   SPV min/mean/max, power por término, VIF ...
+
+ed.plotting.fds_plot(bb)          # Fraction of Design Space (varianza de predicción)
+ed.plotting.power_plot(report.power)
+```
+
+Incluye además **Definitive Screening Designs** (Jones & Nachtsheim, 2011), el
+diseño de screening moderno que estima efectos principales libres de sesgo de
+curvatura e interacciones en `2m+1` corridas:
+
+```python
+dsd = ed.definitive_screening({f"x{i+1}": (0, 10) for i in range(6)})  # 13 corridas
+ed.evaluate(dsd).vif.max()        # 1.0  (efectos principales ortogonales)
+```
+
+### Reporte HTML de una línea
+
+Todo lo anterior se condensa en un único HTML elegante y autocontenido —
+metodología, calidad (con semáforo), resultados, valores anómalos y
+recomendaciones— pasable como argumento del propio experimento:
+
+```python
+ed.report(bb, response=y, output_dir="reports/")      # standalone
+ed.fit_linear_model(bb, y, report="reports/")         # o como argumento
+```
+
+## Notebooks
+
+Los `[notebooks/](notebooks/)` son cuadernos explicativos con narrativa y gráficas:
+
+- **01–03** — el flujo clásico: screening → superficie de respuesta → diseño óptimo
+(con la capa de evaluación integrada).
+- **04–07 (por dominio)** — cada uno aplica el patrón **construir → evaluar →
+benchmarkear** usando una *función-verdad conocida* para medir qué tan bien el DoE
+recupera el óptimo, y comparándolo contra un baseline:
+
+  | Notebook | Dominio          | Hallazgo                                                                   |
+  | -------- | ---------------- | -------------------------------------------------------------------------- |
+  | 04       | Química          | recupera el óptimo de una reacción con ~1.8× menos error que el azar       |
+  | 05       | Optimización     | diseño D-óptimo en región restringida bate al azar en calidad de surrogate |
+  | 06       | Machine Learning | supera a *random search* en el 98% de las réplicas, a presupuesto igual    |
+  | 07       | Quantum ML       | mejor kernel con menos evaluaciones de circuito (cada una = tiempo de QPU) |
+
+
+## Tests
+
+```bash
+uv run pytest -q       # o: pytest -q
+```
+
+## Publicación en PyPI
+
+El paquete usa `hatchling` con versión de fuente única (`__version__` en
+`doekit/__init__.py`):
+
+Los índices `testpypi` y `pypi` están configurados en `pyproject.toml`
+(`[[tool.uv.index]]`), así que los comandos son cortos:
+
+```bash
+uv build                                   # genera dist/*.whl y dist/*.tar.gz
+uvx twine check dist/*                     # valida que el README renderice
+uv publish --index testpypi --token pypi-<TOKEN_TESTPYPI>   # prueba en TestPyPI
+uv publish --token pypi-<TOKEN_PYPI>       # publicación en PyPI (índice por defecto)
+```
+
+Antes de publicar: subir la versión en `__init__.py`, actualizar
+`[CHANGELOG.md](CHANGELOG.md)` y verificar los metadatos de `pyproject.toml`.
+PyPI no permite re-subir una versión existente: cada publicación necesita un número
+nuevo.
+
+## Licencia
+
+MIT — ver `[LICENSE](LICENSE)`.

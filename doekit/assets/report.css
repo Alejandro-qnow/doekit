@@ -1,0 +1,59 @@
+/* doekit report stylesheet. Shared by the folder mode (linked as report.css)
+   and the self-contained mode (inlined into <style>). */
+:root{
+  --fg:#1a1a1a; --muted:#6b6b6b; --line:#e6e6e6; --bg:#fff; --soft:#fafafa;
+  --green:#1a9850; --amber:#e8a020; --red:#d73027; --gray:#999; --accent:#2b6cb0;
+}
+*{box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color:var(--fg); line-height:1.55; max-width:960px; margin:0 auto;
+  padding:2.2rem 1.6rem; background:var(--bg);
+}
+
+/* header band, colored by the overall verdict */
+.hero{border-left:6px solid var(--gray); padding:.1rem 0 .1rem 1rem; margin:0 0 1.4rem}
+.hero.green{border-color:var(--green)} .hero.amber{border-color:var(--amber)}
+.hero.red{border-color:var(--red)}
+h1{font-size:1.7rem; margin:0 0 .2rem}
+h2{font-size:1.15rem; margin:2rem 0 .6rem; padding-bottom:.3rem; border-bottom:2px solid var(--fg)}
+h3{font-size:1rem; margin:1.1rem 0 .4rem}
+.sub{color:var(--muted); font-size:.86rem}
+
+/* semaphore cards */
+.cards{display:flex; gap:.8rem; flex-wrap:wrap; margin:.6rem 0}
+.card{flex:1; min-width:150px; border:1px solid var(--line); border-radius:10px; padding:.9rem 1rem;
+  background:var(--soft)}
+.card .val{font-size:1.6rem; font-weight:650}
+.card .lbl{color:var(--muted); font-size:.8rem}
+.green{color:var(--green)} .amber{color:var(--amber)} .red{color:var(--red)} .gray{color:var(--gray)}
+.badge{display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.72rem; font-weight:600; color:#fff}
+.badge.green{background:var(--green)} .badge.amber{background:var(--amber)} .badge.red{background:var(--red)}
+
+ul{margin:.3rem 0 .3rem 1.1rem} li{margin:.2rem 0}
+
+/* tables with zebra striping */
+table{border-collapse:collapse; width:100%; font-size:.82rem; margin:.5rem 0}
+th,td{border:1px solid var(--line); padding:.32rem .5rem; text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{background:#f0f3f7}
+tbody tr:nth-child(even){background:var(--soft)}
+.anom tbody tr{background:#fff6f6}
+
+/* responsive plot grid */
+.plots{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1rem; margin:.6rem 0}
+img{max-width:100%; border:1px solid #eee; border-radius:8px; margin:.4rem 0; background:#fff}
+figure{margin:0}
+figure figcaption{color:var(--muted); font-size:.78rem; margin-top:.2rem}
+
+details{margin:.5rem 0} summary{cursor:pointer; color:#444; font-size:.85rem}
+code{background:var(--soft); padding:.05rem .3rem; border-radius:4px}
+.gloss{color:var(--muted); font-size:.8rem; margin:.1rem 0 .6rem}
+.warn{color:var(--amber); font-size:.82rem; font-style:italic}
+.foot{color:var(--gray); font-size:.76rem; margin-top:2.5rem; border-top:1px solid var(--line); padding-top:.8rem}
+
+@media print{
+  body{max-width:none; padding:0}
+  details{display:block} summary{display:none}
+  h2{break-after:avoid} img{break-inside:avoid}
+}
