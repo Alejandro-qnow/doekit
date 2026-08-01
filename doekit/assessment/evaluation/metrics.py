@@ -180,7 +180,27 @@ def power_analysis(design: Design, model: Optional[Model] = None,
     with np.errstate(divide="ignore", invalid="ignore"):
         ncp = np.where(se_unit > 0, eff / (sigma * se_unit), np.inf)
     tcrit = stats.t.ppf(1 - alpha / 2, dof)
-    power = stats.nct.sf(tcrit, dof, ncp) + stats.nct.cdf(-tcrit, dof, ncp)
+
+    # Two-sided power = upper + lower non-central-t tails. SciPy's nct is
+    # numerically unstable in the far tails for large non-centrality (exactly
+    # the well-powered orthogonal designs experimenters want): lower cdf can
+    # return NaN erratically above ~9, and both tails return NaN when ncp is
+    # inf (se_unit -> 0). In that regime power is saturated and the normal
+    # approximation is exact for practical purposes.
+    with np.errstate(invalid="ignore"):
+        upper = stats.nct.sf(tcrit, dof, ncp)
+        lower = stats.nct.cdf(-tcrit, dof, ncp)
+        power = upper + lower
+    degenerado = ~np.isfinite(power)
+    if np.any(degenerado):
+        aproximada = stats.norm.sf(tcrit - ncp) + stats.norm.cdf(-tcrit - ncp)
+        power = np.where(degenerado, aproximada, power)
+    power = np.clip(power, 0.0, 1.0)
+    if not np.all(np.isfinite(power)):
+        raise RuntimeError(
+            "power_analysis produced non-finite values after fallback; "
+            "this is a bug — please report it"
+        )
     return pd.Series(power, index=names, name="power")
 
 
@@ -219,13 +239,29 @@ def vif(design: Design, model: Optional[Model] = None) -> pd.Series:
     const = std == 0
     Xc = (Xk - Xk.mean(axis=0))
     Xc[:, ~const] = Xc[:, ~const] / std[~const]
-    C = (Xc.T @ Xc) / Xc.shape[0]
-    try:
-        Cinv = np.linalg.pinv(C)
-        vifs = np.diag(Cinv).astype(float)
-    except np.linalg.LinAlgError:
-        vifs = np.full(Xk.shape[1], np.nan)
-    vifs[const] = np.nan
+    # VIF_j = 1/(1-R²_j) from regressing column j on the others.
+    # Do NOT use diag(pinv(corr)): when corr is singular (perfect collinearity)
+    # the pseudoinverse returns values < 1 (e.g. 0.25), which looks "excellent"
+    # (VIF≈1) instead of infinite multicollinearity.
+    vifs = np.empty(Xk.shape[1], dtype=float)
+    for j in range(Xk.shape[1]):
+        if const[j]:
+            vifs[j] = np.nan
+            continue
+        others = (~const) & (np.arange(Xk.shape[1]) != j)
+        y = Xc[:, j]
+        if not np.any(others):
+            vifs[j] = 1.0
+            continue
+        beta, _, _, _ = np.linalg.lstsq(Xc[:, others], y, rcond=None)
+        resid = y - Xc[:, others] @ beta
+        ss_res = float(np.dot(resid, resid))
+        ss_tot = float(np.dot(y, y))
+        if ss_tot <= 0.0:
+            vifs[j] = np.nan
+            continue
+        r2 = 1.0 - ss_res / ss_tot
+        vifs[j] = np.inf if r2 >= 1.0 - 1e-12 else 1.0 / (1.0 - r2)
     return pd.Series(vifs, index=kept_names, name="vif")
 
 
@@ -307,13 +343,19 @@ def fds_data(design: Design, model: Optional[Model] = None,
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
     X = model.matrix(coded)
-    n = X.shape[0]
-    Minv = np.linalg.pinv(X.T @ X)
+    n, p = X.shape
+    M = X.T @ X
+    rank = int(np.linalg.matrix_rank(M))
     reg = region if region is not None else _region_frame(design, model, n_region, seed)
+    m = len(reg)
+    fraction = (np.arange(1, m + 1) - 0.5) / m
+    # Same gate as efficiencies: pinv would invent a finite SPV for a
+    # non-estimable model and paint a reassuring FDS curve.
+    if rank < p or n < p:
+        return pd.DataFrame({"fraction": fraction, "spv": np.full(m, np.nan)})
+    Minv = np.linalg.inv(M)
     Xr = model.matrix(reg)
     spv = np.sort(n * _leverage(Xr, Minv))
-    m = len(spv)
-    fraction = (np.arange(1, m + 1) - 0.5) / m
     return pd.DataFrame({"fraction": fraction, "spv": spv})
 
 
@@ -380,9 +422,14 @@ class DesignEvaluation:
             f"  Power (effect/sigma anticipated):",
         ]
         for name, pw in self.power.items():
-            lines.append(f"      {name:<28} {pw:5.2f}")
+            if pw is None or not np.isfinite(pw):
+                lines.append(f"      {name:<28} {'n/a':>5}")
+            else:
+                lines.append(f"      {name:<28} {float(pw):5.2f}")
         if len(self.vif):
-            lines.append(f"  Max VIF: {float(np.nanmax(self.vif.to_numpy())):.2f}")
+            vmax = float(np.nanmax(self.vif.to_numpy()))
+            vmax_s = "inf" if np.isinf(vmax) else f"{vmax:.2f}"
+            lines.append(f"  Max VIF: {vmax_s}")
         return "\n".join(lines)
 
     def to_dict(self) -> dict:
@@ -423,8 +470,9 @@ def evaluate(design: Design, model: Optional[Model] = None,
     """Evaluate a design end-to-end and return a :class:`DesignEvaluation`.
 
     Combines :func:`efficiencies`, :func:`power_analysis`, :func:`vif` and
-    :func:`fds_data`. ``effect_size`` is the anticipated effect size (in units of
-    ``sigma``) for the power. Everything is computed in coded units.
+    :func:`fds_data`. ``effect_size`` is the anticipated effect size in the same
+    units as the response (non-centrality uses ``effect_size / sigma``). Metrics
+    use coded factor units when ``Design.factors`` is set.
 
     Parameters
     ----------

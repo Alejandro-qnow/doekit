@@ -590,8 +590,9 @@ def _render_html(design, model, ev, eff, fit, imgs, failed, thr, title, head, la
             S.append(f"<p class='gloss'>{_t(lang, 'gloss_power').format(target=thr['power_target'])}</p>")
     if len(ev.vif):
         vmax = float(np.nanmax(ev.vif.to_numpy()))
-        vcol = "red" if vmax > thr["vif_warn"] else "green"
-        S.append(f"<p><b>{_t(lang, 'vif_max')}:</b> <span class='{vcol}'>{vmax:.2f}</span> "
+        vcol = "red" if (not np.isfinite(vmax) or vmax > thr["vif_warn"]) else "green"
+        vmax_s = "∞" if not np.isfinite(vmax) else f"{vmax:.2f}"
+        S.append(f"<p><b>{_t(lang, 'vif_max')}:</b> <span class='{vcol}'>{vmax_s}</span> "
                  f"{_t(lang, 'vif_gloss')}</p>")
     if "alias" in imgs or "alias" in failed:
         S.append(f"<h3>{_t(lang, 'h_alias')}</h3>")
