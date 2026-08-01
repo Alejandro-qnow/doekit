@@ -11,18 +11,18 @@ information matrix.
 ## Theory
 
 For a model matrix $X$, the **information matrix** is $M = X^\top X$; the covariance
-of the least-squares estimates is $\sigma^2 M^{-1}$. Each optimality criterion
-compresses $M$ into a scalar to maximize (doekit uses the "larger is better"
-convention throughout):
+of the least-squares estimates is $\sigma^2 M^{-1}$. Classically some criteria are
+*maximized* and others *minimized*; doekit always exposes a **larger-is-better**
+score (reciprocals where needed), matching `d_criterion` … `i_criterion`:
 
-| Criterion | Optimizes | Meaning |
-|---|---|---|
-| **D** | $\det(M)$ | maximal joint information (most used) |
-| **A** | $\operatorname{tr}(M^{-1})$ | minimal average coefficient variance |
-| **I** | mean prediction variance over the region | best for *prediction* |
-| **G** | $\max_x \operatorname{Var}\hat y(x)$ | minimal worst-case prediction variance |
-| **E** | $\min \lambda(M)$ | best worst-conditioned direction |
-| **T** | $\operatorname{tr}(M)$ | maximal information "magnitude" |
+| Criterion | Classical goal | doekit score (↑ better) | Meaning |
+|---|---|---|---|
+| **D** | maximize $\det(M)$ | $\det(M/N)^{1/p}$ | joint information (most used) |
+| **A** | minimize $\operatorname{tr}(M^{-1})$ | $p\,/\,(N\,\operatorname{tr}(M^{-1}))$ | average coefficient precision |
+| **I** | minimize mean prediction variance | reciprocal of mean pred. var. | best for *prediction* |
+| **G** | minimize $\max_x \operatorname{Var}\hat y(x)$ | $p\,/\,\max_i H_{ii}$ | worst-case prediction |
+| **E** | maximize $\min\lambda(M)$ | $\min\lambda(M)\,/\,N$ | worst-conditioned direction |
+| **T** | maximize $\operatorname{tr}(M)$ | $\operatorname{tr}(M)\,/\,(N p)$ | information "magnitude" |
 
 Two exchange algorithms search the candidate set:
 

@@ -1,6 +1,6 @@
 # Notebooks
 
-El repositorio incluye ocho notebooks explicativos (`notebooks/`) que narran el *por
+El repositorio incluye diez notebooks explicativos (`notebooks/`) que narran el *por
 qué* de las decisiones metodológicas, muestran los datos y sus distribuciones, y
 producen gráficas del análisis. Ejecútalos con `uv run jupyter lab` desde la raíz del
 proyecto.

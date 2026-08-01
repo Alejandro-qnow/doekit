@@ -45,6 +45,10 @@ fr.metadata["aliases"]             # clases de alias
 folded = ed.fold(fr)               # de-confunde principales de 2FI
 ```
 
+`fold` refleja los signos de la **matriz tal como está almacenada**. Los diseños
+fraccionales y Plackett–Burman ya vienen en $\pm 1$; no pliegues un diseño cuyas
+columnas sigan en unidades naturales.
+
 ## Ver también
 
 - Teoría: [Screening (Plackett-Burman)](screening-plackett-burman.md)

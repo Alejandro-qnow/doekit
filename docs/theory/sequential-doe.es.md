@@ -31,4 +31,6 @@ cmp = ed.compare_designs(actual, aumentado)
 cand = ed.candidates_from_bounds([("lr", 1e-4, 1e-1)], n=200)
 ```
 
-Ver `project/ROADMAP.md` para 0.6 (mezcla/split-plot) y 0.7 (`ed.experiment`).
+Superficie ya disponible (doekit ≥ 0.6 / 0.7): [mezcla y split-plot](mixture-and-split-plot.md)
+y el agregado `ed.experiment(...)` / `Experiment` en la
+[chuleta de agentes](../agents/reference.md).

@@ -40,8 +40,10 @@ lof = ed.lack_of_fit(design, y)
 fit = ed.fit_mixed_model(design, y, groups="batch")
 ```
 
-Útil para datos ya agrupados (split-plot / multi-lote). La *generación* de
-diseños split-plot sigue fuera del catálogo del asesor.
+Útil para datos ya agrupados (split-plot / multi-lote). Para *generar* un
+layout split-plot y que el asesor lo proponga, ver
+[Mezcla y split-plot](mixture-and-split-plot.md) (`split_plot_design`,
+`hard_to_change=`).
 
 ## Serialización
 
@@ -49,3 +51,5 @@ diseños split-plot sigue fuera del catálogo del asesor.
 fit.to_dict()   # schema: doekit.FitResult/1
 mix.to_dict()   # schema: doekit.MixedFitResult/1
 ```
+
+Esquemas JSON estables para notebooks, agentes y un posible puente MCP.

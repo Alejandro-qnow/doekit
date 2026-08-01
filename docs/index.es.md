@@ -1,8 +1,9 @@
 # doekit
 
 **Diseño de Experimentos (DoE) en Python**: screening, diseños factoriales,
-superficie de respuesta y diseño óptimo (D/A/I) — más una **capa de evaluación de
-diseños** que la mayoría de las librerías de DoE en Python no tiene.
+superficie de respuesta, diseño óptimo (D/A/I), mezcla / split-plot, aumento
+secuencial — más una **capa de evaluación de diseños** que la mayoría de las
+librerías de DoE en Python no tiene.
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional
 (gráficas y reportes HTML).
@@ -43,12 +44,13 @@ tan lejos está mi diseño del óptimo teórico?"* — la mitad del trabajo que 
 herramientas comerciales (JMP, Design-Expert):
 
 ```python
-report = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
-print(report.summary())
+ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
+print(ev.summary())
 #   D/A/G-eficiencia, distribución de la SPV (FDS),
 #   potencia por término, VIF, estructura de alias ...
 
-ed.report(bb, response=y)   # -> carpeta report/: index.html + images/ + data/
+ed.report(bb, response=y)   # carpeta HTML (requiere doekit[report])
+# O el bucle agregado: ed.experiment(goal=..., factors=..., budget=...)
 ```
 
 ## Por dónde seguir

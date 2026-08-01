@@ -56,5 +56,6 @@ cand = ed.candidates_from_bounds([("lr", 1e-4, 1e-1), ("wd", 1e-6, 1e-2)], n=200
 nxt = ed.propose_next_runs(design, n_add=4, candidates=cand)
 ```
 
-See also the product roadmap in `project/ROADMAP.md` (0.6 mixture/split-plot,
-0.7 `ed.experiment`).
+Related shipping surface (doekit ≥ 0.6 / 0.7): [mixture & split-plot](mixture-and-split-plot.md),
+and the aggregate `ed.experiment(...)` / `Experiment` loop in the
+[agents cheat sheet](../agents/reference.md).

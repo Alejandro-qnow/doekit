@@ -44,6 +44,10 @@ fr.metadata["aliases"]             # alias classes
 folded = ed.fold(fr)               # de-confounds main effects from 2FI
 ```
 
+`fold` reflects signs of the **run matrix as stored**. Fractional factorial and
+Plackett–Burman matrices are already in $\pm 1$; do not fold a design whose
+columns are still in natural units.
+
 ## See also
 
 - Theory: [Screening (Plackett-Burman)](screening-plackett-burman.md)

@@ -44,12 +44,16 @@ temp.decode([-1, 0, 1])     # -> [20, 50, 80]
 
 ed.DiscreteFactor("reps", levels=[1, 2, 3])          # numérico, ajusta al decodificar
 ed.CategoricalFactor("catalyst", levels=["A", "B"])  # dummy en el modelo
+ed.MixtureFactor("A", lower=0, upper=1)              # componente de simplex (Σ xᵢ = 1)
 ```
 
-Cada constructor de diseño acepta factores y devuelve la matriz de corridas en unidades
-**naturales**, conservando la codificada como metadato; la capa de evaluación recodifica
-automáticamente antes de calcular cualquier métrica.
+Los constructores que reciben rangos de factores devuelven la matriz en unidades
+**naturales** y conservan los objetos `Factor` en el diseño. La capa de
+evaluación / análisis recodifica a ±1 (o la codificación correspondiente) a partir
+de esos factores antes de armar la matriz de modelo o cualquier métrica — las
+columnas codificadas no se guardan como matriz separada en metadatos.
 
 ## Ver también
 
-- API: [`ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor`](../api/factors-model.md)
+- Teoría: [Mezcla y split-plot](mixture-and-split-plot.md)
+- API: [`ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor`, `MixtureFactor`](../api/factors-model.md)

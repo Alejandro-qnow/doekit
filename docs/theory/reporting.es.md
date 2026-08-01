@@ -3,8 +3,9 @@
 ## Motivación
 
 El reporte es el artefacto de la capa de evaluación: lo que un científico comparte con
-colegas o jefatura. Cierra el círculo **construir → evaluar → comunicar** y —más
-adelante— es lo que el servidor MCP devuelve como recurso.
+colegas o jefatura. Cierra el círculo **construir → evaluar → comunicar**.
+`report_summary(...)` expone el mismo contenido como dict estructurado para agentes;
+un paquete MCP dedicado está planificado fuera del núcleo (ver `project/PLAN_MCP.md`).
 
 ## Qué contiene el reporte
 

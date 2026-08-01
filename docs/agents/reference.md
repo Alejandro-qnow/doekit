@@ -13,10 +13,11 @@ Self-contained cheat sheet for the skill. Import: `import doekit as ed`.
 | `ed.evaluate(design, model=..., effect_size=..., sigma=...)` | Quality → `DesignEvaluation` |
 | `ed.fit_linear_model(design, y, blocks=..., cov_type=...)` | OLS (+ blocks, HC SE) |
 | `ed.fit_mixed_model(design, y, groups=...)` | MixedLM (batches / whole plots) |
-| `ed.propose_next_runs(design, response=y, n_add=4, budget=..., criterion="D", candidates=...)` | Next batch + comparison |
+| `ed.propose_next_runs(design, response=y, n_add=4, budget=..., criterion="D", candidates=...)` | Next batch + comparison (`priorities=` accepted but not yet used) |
 | `ed.augment_design(design, n_add, ...)` | Conditional optimal augmentation |
 | `ed.compare_designs(a, b, ...)` | Δ D/A/G, SPV, power, runs |
 | `ed.report(design, response=y, lang="es"\|"en", self_contained=...)` | Rule-based HTML |
+| `ed.report_summary(design, response=y, ...)` | Same narrative as structured dict (agents) |
 | `ed.candidates_from_bounds(...)` | Candidate points from factor bounds |
 
 ## Recommendation

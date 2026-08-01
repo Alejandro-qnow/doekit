@@ -1,7 +1,8 @@
 site_name: doekit
 site_description: >-
   Design of Experiments (DoE) in Python — screening, response surface,
-  optimal design, and a design-evaluation/benchmarking layer.
+  optimal design, mixture/split-plot, sequential DoE, and a
+  design-evaluation/benchmarking layer.
 site_url: https://alejandro-qnow.github.io/doekit/
 repo_url: https://github.com/Alejandro-qnow/doekit
 repo_name: Alejandro-qnow/doekit

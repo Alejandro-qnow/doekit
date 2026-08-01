@@ -63,9 +63,10 @@ fit = ed.fit_mixed_model(design, y, groups=batch_ids, method="ml")
 print(fit.re_var, fit.summary_frame())
 ```
 
-Typical use: analyse already-collected split-plot / multi-batch data. Generating
-split-plot *designs* is still outside the advisor catalog (flagged in caveats);
-analysis of grouped data is supported here.
+Typical use: analyse already-collected split-plot / multi-batch data. To
+*generate* a split-plot layout and shortlist it in the advisor, see
+[Mixture and split-plot](mixture-and-split-plot.md) (`split_plot_design`,
+`hard_to_change=`).
 
 ## Agent-friendly serialization
 
@@ -76,4 +77,5 @@ ed.evaluate(d).to_dict()
 ed.recommend_design("screening", 5).to_dict()
 ```
 
-Stable JSON schemas so MCP / notebooks / agents share the same contract.
+Stable JSON schemas so notebooks, agents, and any future MCP bridge share the
+same contract.

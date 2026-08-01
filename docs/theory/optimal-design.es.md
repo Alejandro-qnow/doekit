@@ -11,18 +11,19 @@ set** según un criterio sobre la matriz de información.
 ## Teoría
 
 Para una matriz de modelo $X$, la **matriz de información** es $M = X^\top X$; la
-covarianza de los estimados por mínimos cuadrados es $\sigma^2 M^{-1}$. Cada criterio de
-optimalidad comprime $M$ en un escalar a maximizar (doekit usa la convención "mayor es
-mejor" en todo):
+covarianza de los estimados por mínimos cuadrados es $\sigma^2 M^{-1}$. Clásicamente
+unos criterios se *maximizan* y otros se *minimizan*; doekit siempre expone un score
+**mayor-es-mejor** (recíprocos cuando hace falta), alineado con `d_criterion` …
+`i_criterion`:
 
-| Criterio | Optimiza | Significado |
-|---|---|---|
-| **D** | $\det(M)$ | información conjunta máxima (el más usado) |
-| **A** | $\operatorname{tr}(M^{-1})$ | mínima varianza media de los coeficientes |
-| **I** | varianza media de predicción sobre la región | mejor para *predecir* |
-| **G** | $\max_x \operatorname{Var}\hat y(x)$ | mínima varianza de predicción en el peor punto |
-| **E** | $\min \lambda(M)$ | mejor dirección peor-condicionada |
-| **T** | $\operatorname{tr}(M)$ | máxima "magnitud" de la información |
+| Criterio | Meta clásica | Score doekit (↑ mejor) | Significado |
+|---|---|---|---|
+| **D** | maximizar $\det(M)$ | $\det(M/N)^{1/p}$ | información conjunta (el más usado) |
+| **A** | minimizar $\operatorname{tr}(M^{-1})$ | $p\,/\,(N\,\operatorname{tr}(M^{-1}))$ | precisión media de coeficientes |
+| **I** | minimizar var. media de predicción | recíproco de esa media | mejor para *predecir* |
+| **G** | minimizar $\max_x \operatorname{Var}\hat y(x)$ | $p\,/\,\max_i H_{ii}$ | predicción en el peor punto |
+| **E** | maximizar $\min\lambda(M)$ | $\min\lambda(M)\,/\,N$ | dirección peor-condicionada |
+| **T** | maximizar $\operatorname{tr}(M)$ | $\operatorname{tr}(M)\,/\,(N p)$ | "magnitud" de la información |
 
 Dos algoritmos de intercambio recorren el candidate set:
 

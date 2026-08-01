@@ -4,6 +4,14 @@
 
 ::: doekit.assessment.analysis
 
+## Design advisor
+
+::: doekit.orchestration.advise
+
+## Experiment aggregate
+
+::: doekit.orchestration.experiment
+
 ## Sequential DoE
 
 ::: doekit.orchestration.sequential
@@ -16,6 +24,6 @@
 
 ::: doekit.presentation.report
 
-## Design advisor
+## Export
 
-::: doekit.orchestration.advise
+::: doekit.presentation.export

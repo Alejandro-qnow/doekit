@@ -173,10 +173,19 @@ uv publish --index testpypi --token pypi-<TOKEN_TESTPYPI>   # prueba en TestPyPI
 uv publish --token pypi-<TOKEN_PYPI>       # publicación en PyPI (índice por defecto)
 ```
 
-Antes de publicar: subir la versión en `__init__.py`, actualizar
-`[CHANGELOG.md](CHANGELOG.md)` y verificar los metadatos de `pyproject.toml`.
-PyPI no permite re-subir una versión existente: cada publicación necesita un número
-nuevo.
+Antes de publicar: actualizar `[CHANGELOG.md](CHANGELOG.md)` y verificar
+`pyproject.toml`. PyPI/TestPyPI no permiten re-subir una versión existente
+(ni reemplazar un wheel con otro hash).
+
+Atajo recomendado — el script limpia `dist/`, consulta el índice, hace
+**auto-bump de patch** si la versión ya existe, y reintenta si el publish
+choca por hash:
+
+```bash
+uv run --with tqdm --with python-dotenv python scripts/update_package.py          # TestPyPI
+uv run --with tqdm --with python-dotenv python scripts/update_package.py --prod   # PyPI
+uv run --with tqdm --with python-dotenv python scripts/update_package.py --bump   # forzar +0.0.1
+```
 
 ## Licencia
 

@@ -3,8 +3,9 @@
 ## Motivation
 
 The report is the artifact of the evaluation layer: the thing a scientist shares with
-colleagues or management. It closes the loop **build → evaluate → communicate**, and
-— later — is what the MCP server returns as a resource.
+colleagues or management. It closes the loop **build → evaluate → communicate**.
+`report_summary(...)` exposes the same content as a structured dict for agents; a
+dedicated MCP package is planned outside the core library (see `project/PLAN_MCP.md`).
 
 ## What the report contains
 

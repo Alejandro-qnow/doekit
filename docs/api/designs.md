@@ -20,9 +20,17 @@
 
 ::: doekit.generation.catalog.response_surface
 
-## Random
+## Random / space-filling
 
 ::: doekit.generation.catalog.random_design
+
+## Mixture
+
+::: doekit.generation.catalog.mixture
+
+## Split-plot
+
+::: doekit.generation.catalog.split_plot
 
 ## Optimal
 

@@ -44,12 +44,16 @@ temp.decode([-1, 0, 1])     # -> [20, 50, 80]
 
 ed.DiscreteFactor("reps", levels=[1, 2, 3])          # numeric, snaps on decode
 ed.CategoricalFactor("catalyst", levels=["A", "B"])  # dummy-coded in the model
+ed.MixtureFactor("A", lower=0, upper=1)              # simplex component (Σ xᵢ = 1)
 ```
 
-Every design constructor accepts factors and returns the run matrix in **natural**
-units, keeping the coded version as metadata; the evaluation layer re-codes
-automatically before computing any metric.
+Design constructors that take factor bounds return the run matrix in **natural**
+units and keep the `Factor` objects on the design. The evaluation / analysis layer
+re-encodes to ±1 (or the appropriate coding) from those factors before building
+the model matrix or any metric — coded columns are not stored as a separate
+metadata matrix.
 
 ## See also
 
-- API: [`ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor`](../api/factors-model.md)
+- Theory: [Mixture and split-plot](mixture-and-split-plot.md)
+- API: [`ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor`, `MixtureFactor`](../api/factors-model.md)
