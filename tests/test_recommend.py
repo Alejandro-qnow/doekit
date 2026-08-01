@@ -14,7 +14,10 @@ def test_screening_low_budget_recommends_plackett_burman():
 
 
 def test_constrained_forces_optimal():
-    r = ed.recommend_design("optimization", factors=3, constrained=True, seed=0)
+    r = ed.recommend_design(
+        "optimization", factors=3,
+        constraints=ed.Constraints(irregular=True), seed=0,
+    )
     assert r.method == "D-optimal"
     assert set(r.table["method"]) == {"D-optimal"}
 
@@ -38,12 +41,10 @@ def test_priorities_affect_ranking_or_are_dominated():
         assert r.method in set(r.table["method"])
 
 
-def test_caveats_always_present_and_mention_catalog_gaps():
+def test_caveats_always_present_and_mention_sequential():
     r = ed.recommend_design("screening", factors=5, seed=0)
     joined = " ".join(r.caveats).lower()
-    assert "mixture" in joined and "split-plot" in joined
     assert "multi-objective" in joined or "trade-off" in joined
-    assert "fit_mixed_model" in joined or "fit_linear_model" in joined
     assert "propose_next_runs" in joined
 
 

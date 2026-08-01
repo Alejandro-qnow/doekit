@@ -6,6 +6,35 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-01
+
+### Añadido — Experiment E2E, export y CLI
+- **`ed.experiment(...)`** / **`Experiment`**: `plan`, `evaluate`, `ingest`
+  (multi-y), `desirability`, `multi_response_summary`, `next`, `compare`,
+  `report`, `export_csv` / `export_excel`, `to_dict` (`doekit.Experiment/1`).
+- **`run_sheet`**, **`export_csv`**, **`export_excel`** (extra opcional
+  `[export]` = openpyxl).
+- CLI **`doekit`**: subcomandos `recommend`, `evaluate`, `experiment`
+  (`[project.scripts]`).
+- Multi-respuesta MVP: ingest dict/DataFrame + desirability Derringer simple
+  + nota “stronger / weaker” por R².
+
+## [0.6.0] - 2026-08-01
+
+### Añadido — mixture, split-plot y constraints nativos
+- **`MixtureFactor`**, **`simplex_lattice`**, **`simplex_centroid`**, modelos
+  Scheffé (`Model.scheffe_linear` / `scheffe_quadratic`).
+- **`SimplexRegion`**: evaluate/FDS muestrean el simplex (no el hipercubo) cuando
+  el diseño es de mezcla.
+- **`split_plot_design`**: whole-plot / subplot + columna `whole_plot_id` para
+  `fit_mixed_model`.
+- **`Constraints`** / **`coerce_constraints`**: `mixture`, `hard_to_change`,
+  `split_plot`, `irregular`, `run_cost`, `exclude`. El booleano
+  ``constrained=True`` queda **deprecated**.
+- **Advisor**: shortlist real para mixture y split-plot (deja de solo caveat-ear);
+  atajos `mixture=` y `hard_to_change=`.
+- Docs teoría + agents reference actualizados; roadmap 0.6 marcado hecho.
+
 ## [0.5.0] - 2026-08-01
 
 ### Añadido — DoE secuencial / adaptativo

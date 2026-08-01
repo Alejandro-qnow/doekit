@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import doekit as ed
-from doekit.designs.screening import _hadamard, _is_hadamard
+from doekit.generation.catalog.screening import _hadamard, _is_hadamard
 
 
 # --- Screening / Plackett-Burman -------------------------------------------

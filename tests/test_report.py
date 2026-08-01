@@ -79,7 +79,7 @@ def test_anomaly_detection_flags_outlier_not_everything():
     rng = np.random.default_rng(0)
     X = bb.matrix
     y = (80 + 5 * (X["temp"] - 50) / 30 - 3 * ((X["ph"] - 6) / 3) ** 2
-         + rng.normal(0, 1.0, len(X))).to_numpy()
+         + rng.normal(0, 1.0, len(X))).to_numpy().copy()
     y[4] += 25.0   # deliberate outlier
     fit = ed.fit_linear_model(bb, y, model=ed.Model.full_quadratic(["temp", "ph", "conc"]))
     an = fit.anomalies()

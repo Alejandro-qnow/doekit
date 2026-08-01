@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import doekit as ed
-from doekit.designs.base import Design
+from doekit.domain.design import Design
 
 
 @pytest.mark.parametrize("build", [

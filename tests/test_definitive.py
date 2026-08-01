@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import doekit as ed
-from doekit.designs.definitive import _paley_conference, _next_conference_order
+from doekit.generation.catalog.definitive import _paley_conference, _next_conference_order
 
 
 @pytest.mark.parametrize("order", [4, 6, 8, 12, 14, 18, 20])

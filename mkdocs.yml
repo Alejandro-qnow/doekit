@@ -56,8 +56,12 @@ plugins:
             Evaluation metrics: Métricas de evaluación
             Blocked & mixed analysis: Análisis con bloques y mixtos
             Sequential DoE: DoE secuencial
+            Mixture & split-plot: Mezcla y split-plot
             Reporting: Reporte
             Guide: Guía
+            Agents: Agentes
+            Experiment designer skill: Skill diseñador de experimentos
+            API cheat sheet: Chuleta de API
             API reference: Referencia de API
             Overview: Resumen
             Factors & model: Factores y modelo
@@ -109,9 +113,14 @@ nav:
       - Evaluation metrics: theory/evaluation-metrics.md
       - Blocked & mixed analysis: theory/blocked-and-mixed.md
       - Sequential DoE: theory/sequential-doe.md
+      - Mixture & split-plot: theory/mixture-and-split-plot.md
       - Reporting: theory/reporting.md
   - Guide:
       - Notebooks: guide/notebooks.md
+  - Agents:
+      - Overview: agents/index.md
+      - Experiment designer skill: agents/SKILL.md
+      - API cheat sheet: agents/reference.md
   - API reference:
       - Overview: api/index.md
       - Factors & model: api/factors-model.md

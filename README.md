@@ -13,6 +13,7 @@ Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional 
 ```bash
 pip install doekit            # núcleo
 pip install "doekit[plot]"    # con gráficos (matplotlib)
+pip install "doekit[export]"  # Excel (openpyxl)
 ```
 
 Desde el repositorio, para desarrollo:
@@ -56,6 +57,13 @@ fit = ed.fit_linear_model(pb, y, cov_type="HC3")
 fit = ed.fit_linear_model(design, y, blocks="block")
 mix = ed.fit_mixed_model(design, y, groups="batch")
 fit.summary_frame()                # DataFrame con estimate/std_error/t/p
+
+# --- Bucle end-to-end ---
+exp = ed.experiment(goal="screening", factors=6, budget=12)
+exp.evaluate()
+exp.export_csv("runs.csv")         # plantilla de laboratorio
+exp.ingest(y)                      # datos reales
+nxt = exp.next(n_add=4)            # siguiente lote
 ```
 
 Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
@@ -80,7 +88,10 @@ Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
 | Modelo                        | `Model.parse`, `Model.full_quadratic`, `Model.main_effects`                                       |
 | Análisis                      | `fit_linear_model` (blocks, HC), `anova_table`, `lack_of_fit`, `fit_mixed_model`, `main_effects`  |
 | **Secuencial**                | `augment_design`, `propose_next_runs`, `compare_designs`, `candidates_from_bounds`                 |
+| **Experiment**                | `ed.experiment(...)` — plan → evaluate → ingest → next → report → export CSV/Excel                 |
+| Mezcla / split-plot           | `simplex_lattice`, `simplex_centroid`, `split_plot_design`, `MixtureFactor`, `Constraints`         |
 | Gráficos                      | `half_normal_plot`, `effects_plot`, `correlation_plot`, `fds_plot`, `power_plot`, `alias_heatmap` |
+| CLI                           | `doekit recommend|evaluate|experiment`                                                             |
 
 
 ## Lo que nos distingue: evaluar el diseño, no solo construirlo

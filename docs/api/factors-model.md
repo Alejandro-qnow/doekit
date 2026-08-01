@@ -2,8 +2,8 @@
 
 ## Factors
 
-::: doekit.factors
+::: doekit.domain.factors
 
 ## Model
 
-::: doekit.model
+::: doekit.domain.model

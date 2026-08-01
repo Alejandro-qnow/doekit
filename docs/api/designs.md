@@ -2,32 +2,32 @@
 
 ## Design container
 
-::: doekit.designs.base
+::: doekit.domain.design
 
 ## Factorial
 
-::: doekit.designs.factorial
+::: doekit.generation.catalog.factorial
 
 ## Screening
 
-::: doekit.designs.screening
+::: doekit.generation.catalog.screening
 
 ## Definitive screening
 
-::: doekit.designs.definitive
+::: doekit.generation.catalog.definitive
 
 ## Response surface
 
-::: doekit.designs.response_surface
+::: doekit.generation.catalog.response_surface
 
 ## Random
 
-::: doekit.designs.random_design
+::: doekit.generation.catalog.random_design
 
 ## Optimal
 
-::: doekit.designs.optimal
+::: doekit.generation.search.optimal
 
 ## Criteria
 
-::: doekit.criteria
+::: doekit.domain.criteria

@@ -2,20 +2,20 @@
 
 ## Analysis
 
-::: doekit.analysis
+::: doekit.assessment.analysis
 
 ## Sequential DoE
 
-::: doekit.sequential
+::: doekit.orchestration.sequential
 
 ## BO bridge
 
-::: doekit.bo
+::: doekit.adapters.bo
 
 ## Report
 
-::: doekit.report
+::: doekit.presentation.report
 
 ## Design advisor
 
-::: doekit.recommend
+::: doekit.orchestration.advise

@@ -1,9 +1,9 @@
 # Evaluation
 
-## Metrics & benchmarking
+## Metrics
 
-::: doekit.evaluate
+::: doekit.assessment.evaluation
 
 ## Plotting
 
-::: doekit.plotting
+::: doekit.presentation.render.figures_mpl

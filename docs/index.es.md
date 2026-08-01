@@ -59,3 +59,5 @@ ed.report(bb, response=y)   # -> carpeta report/: index.html + images/ + data/
 - **Referencia de API** — autogenerada desde los docstrings del código.
 - **Guía** — los [notebooks](guide/notebooks.md) recorren casos reales por dominio
   (química, ML, ML cuántico) con el patrón *construir → evaluar → benchmarkear*.
+- **Agentes** — skill portable del [diseñador de experimentos](agents/index.md)
+  para Cursor, Claude y VS Code (copia `docs/agents/` a la carpeta de skills).

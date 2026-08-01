@@ -58,3 +58,5 @@ ed.report(bb, response=y)   # -> a report/ folder: index.html + images/ + data/
 - **API reference** — auto-generated from the source docstrings.
 - **Guide** — the [notebooks](guide/notebooks.md) walk through real, domain-specific
   cases (chemistry, ML, quantum ML) with the *build → evaluate → benchmark* pattern.
+- **Agents** — portable [experiment-designer skill](agents/index.md) for Cursor,
+  Claude, and VS Code (copy `docs/agents/` into your tool’s skills folder).

@@ -32,6 +32,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "asttokens>=3.0.2",
     "numpy>=1.23",
     "pandas>=1.5",
     "scipy>=1.9",
@@ -42,6 +43,7 @@ dependencies = [
 plot = ["matplotlib>=3.6"]
 report = ["matplotlib>=3.6"]
 bo = ["scikit-optimize>=0.9"]
+export = ["openpyxl>=3.1"]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.5",
@@ -58,6 +60,9 @@ dev = [
     "build>=1.2",
 ]
 
+[project.scripts]
+doekit = "doekit.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/qnowtech/doekit"
 Repository = "https://github.com/qnowtech/doekit"
@@ -69,7 +74,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-path = "doekit/__init__.py"
+path = "doekit/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["doekit"]

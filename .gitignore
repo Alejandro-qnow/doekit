@@ -25,5 +25,7 @@ examples/*.png
 # Reportes HTML generados (folder default y modo autocontenido)
 report/
 reports/
+notebooks/reports/
 examples/reports/
 .claude/
+.cursor/
