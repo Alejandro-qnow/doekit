@@ -4,6 +4,14 @@
 
 ::: doekit.analysis
 
+## Sequential DoE
+
+::: doekit.sequential
+
+## BO bridge
+
+::: doekit.bo
+
 ## Report
 
 ::: doekit.report

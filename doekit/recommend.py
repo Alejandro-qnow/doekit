@@ -21,11 +21,8 @@ IMPORTANT CAVEATS (by design, not defects):
 - **Coverage limited to the ``doekit`` catalog**: it does not yet cover **mixture
   designs** (simplex, factors summing to a constant) nor **split-plot** (hard-to-
   change factors). If your case is one of those, the advisor flags it in
-  ``caveats`` rather than staying silent.
-
-Note: the user-facing strings (method labels, table columns, caveats and
-rationale) are kept in Spanish here and become language-parameterized in the
-reporting layer.
+  ``caveats`` rather than staying silent. For already-collected split-plot data,
+  analyse with :func:`doekit.analysis.fit_mixed_model`.
 """
 
 from __future__ import annotations
@@ -50,6 +47,20 @@ from .evaluate import efficiencies as _efficiencies
 
 
 _DEFAULT_PRIORITIES = {"runs": 1.0, "precision": 1.0, "prediction": 1.0}
+
+
+def _jsonify(obj):
+    if isinstance(obj, dict):
+        return {k: _jsonify(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_jsonify(v) for v in obj]
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return _jsonify(obj.tolist())
+    if isinstance(obj, float) and (np.isnan(obj) or np.isinf(obj)):
+        return None
+    return obj
 
 
 def _model_for(order: str, names) -> Model:
@@ -93,14 +104,14 @@ def _candidate_designs(goal, factors, facs, names, k, constrained, model, seed):
             pass  # the design does not apply to this factor type -> skip it
 
     if constrained:
-        _try("D-optimo", lambda: _build_optimal(facs, model, seed))
+        _try("D-optimal", lambda: _build_optimal(facs, model, seed))
         return cands
 
     if has_cat:
         # RSM/PB/DSD assume continuous/2-level factors; with categoricals only
         # the full factorial and D-optimal (dummy) designs are valid.
-        _try("Factorial completo", lambda: full_factorial(_levels_dict(facs, 2)))
-        _try("D-optimo", lambda: _build_optimal(facs, model, seed))
+        _try("Full factorial", lambda: full_factorial(_levels_dict(facs, 2)))
+        _try("D-optimal", lambda: _build_optimal(facs, model, seed))
         return cands
 
     if goal == "screening":
@@ -108,14 +119,14 @@ def _candidate_designs(goal, factors, facs, names, k, constrained, model, seed):
         if k >= 2:
             _try("Definitive Screening", lambda: definitive_screening(factors))
         if k <= 5 and all_continuous:
-            _try("Factorial completo", lambda: full_factorial(_levels_dict(facs, 2)))
+            _try("Full factorial", lambda: full_factorial(_levels_dict(facs, 2)))
     elif goal == "optimization":
         if k >= 3:
             _try("Box-Behnken", lambda: box_behnken(factors))
         if k >= 2:
             _try("Central Composite", lambda: central_composite(factors))
             _try("Definitive Screening", lambda: definitive_screening(factors))
-        _try("D-optimo", lambda: _build_optimal(facs, model, seed))
+        _try("D-optimal", lambda: _build_optimal(facs, model, seed))
     else:
         raise ValueError(f"unknown goal: {goal!r} (use 'screening' or 'optimization')")
     return cands
@@ -167,11 +178,24 @@ class Recommendation:
     scenario: dict = field(default_factory=dict)
 
     def summary(self) -> str:
-        lines = [f"Recomendacion: {self.method}", "-" * 46, self.rationale, "",
-                 "Alternativas evaluadas:", self.table.to_string(index=False)]
+        lines = [f"Recommendation: {self.method}", "-" * 46, self.rationale, "",
+                 "Evaluated alternatives:", self.table.to_string(index=False)]
         if self.caveats:
-            lines += ["", "Salvedades:"] + [f"  - {c}" for c in self.caveats]
+            lines += ["", "Caveats:"] + [f"  - {c}" for c in self.caveats]
         return "\n".join(lines)
+
+    def to_dict(self) -> dict:
+        """Serialize to a JSON-safe dict (``schema: doekit.Recommendation/1``)."""
+        return _jsonify({
+            "schema": "doekit.Recommendation/1",
+            "method": self.method,
+            "rationale": self.rationale,
+            "caveats": list(self.caveats),
+            "scenario": dict(self.scenario),
+            "alternatives": self.table.to_dict("records"),
+            "design": self.design.to_dict(),
+            "model": self.model.to_dict() if self.model is not None else None,
+        })
 
     def __repr__(self) -> str:
         return self.summary()
@@ -220,7 +244,10 @@ def recommend_design(goal: str, factors, budget: Optional[int] = None,
     Notes
     -----
     Coverage limited to the ``doekit`` catalog: it does **not** cover mixture nor
-    split-plot designs; if the case requires them, this is flagged in ``caveats``.
+    split-plot *design generation*; if the case requires them, this is flagged in
+    ``caveats``. Collected split-plot / blocked data can still be analysed with
+    :func:`~doekit.analysis.fit_mixed_model` / ``blocks=`` in
+    :func:`~doekit.analysis.fit_linear_model`.
     """
     order = model_order or ("linear" if goal == "screening" else "quadratic")
     facs = as_factors(factors)
@@ -239,15 +266,15 @@ def recommend_design(goal: str, factors, budget: Optional[int] = None,
             eff = _efficiencies(d, model=model, n_region=n_region, seed=seed)
             evaluable = not eff["rank_deficient"]
         except Exception:
-            eff, evaluable = None, False   # e.g. a model with categoricals not alignable
+            eff, evaluable = None, False
         fits_budget = budget is None or d.n_runs <= budget
         feasible = evaluable and fits_budget
         rows.append({
-            "metodo": label, "corridas": d.n_runs,
+            "method": label, "runs": d.n_runs,
             "D_eff": round(eff["D_efficiency"], 1) if evaluable else None,
             "G_eff": round(eff["G_efficiency"], 1) if evaluable else None,
-            "SPV_medio": round(eff["spv_mean"], 2) if evaluable else None,
-            "en_presupuesto": fits_budget, "soporta_modelo": evaluable,
+            "SPV_mean": round(eff["spv_mean"], 2) if evaluable else None,
+            "in_budget": fits_budget, "supports_model": evaluable,
             "_feasible": feasible, "_eff": eff, "_design": d,
         })
 
@@ -255,7 +282,7 @@ def recommend_design(goal: str, factors, budget: Optional[int] = None,
     table = pd.DataFrame([{k2: v for k2, v in r.items() if not k2.startswith("_")} for r in rows])
     rationale = _rationale(goal, k, order, budget, winner, prio)
     return Recommendation(
-        method=winner["metodo"], design=winner["_design"], model=model,
+        method=winner["method"], design=winner["_design"], model=model,
         rationale=rationale, table=table, caveats=caveats,
         scenario={"goal": goal, "n_factors": k, "budget": budget, "model_order": order},
     )
@@ -263,50 +290,56 @@ def recommend_design(goal: str, factors, budget: Optional[int] = None,
 
 def _rank(rows, prio, budget, caveats):
     feas = [r for r in rows if r["_feasible"]]
-    if not feas:  # nada cabe en presupuesto / soporta el modelo
-        min_runs = min(rows, key=lambda r: r["corridas"])
-        caveats.insert(0, f"Ningun diseno del catalogo cabe en el presupuesto ({budget}) y "
-                          f"soporta el modelo; se recomienda el menor viable ({min_runs['metodo']}, "
-                          f"{min_runs['corridas']} corridas). Aumenta el presupuesto o reduce el modelo.")
+    if not feas:
+        min_runs = min(rows, key=lambda r: r["runs"])
+        caveats.insert(0, (
+            f"No catalog design fits the budget ({budget}) and supports the model; "
+            f"recommending the smallest viable option ({min_runs['method']}, "
+            f"{min_runs['runs']} runs). Increase the budget or reduce the model."
+        ))
         return min_runs
-    min_runs = min(r["corridas"] for r in feas)
+    min_runs = min(r["runs"] for r in feas)
     w = np.array([prio["runs"], prio["precision"], prio["prediction"]], dtype=float)
     w = w / w.sum() if w.sum() > 0 else np.array([1/3, 1/3, 1/3])
     eps = 1e-3
     for r in feas:
-        s_runs = min_runs / r["corridas"]                 # fewer runs -> higher
+        s_runs = min_runs / r["runs"]
         s_prec = max(eps, r["D_eff"] / 100.0)
         s_pred = max(eps, r["G_eff"] / 100.0)
-        # weighted geometric mean: a catastrophic axis (e.g. G~0) SINKS the score,
-        # with no other axis compensating. Consistent with "good on ALL objectives".
         r["_score"] = float(s_runs ** w[0] * s_prec ** w[1] * s_pred ** w[2])
     return max(feas, key=lambda r: r["_score"])
 
 
 def _base_caveats(order, facs, effect_size) -> list:
     cav = [
-        f"Recomendacion condicional al supuesto model_order='{order}' "
-        f"(y effect_size={effect_size} para la potencia).",
-        "\"El mejor\" es un trade-off multiobjetivo (corridas vs precision vs prediccion): "
-        "ajusta 'priorities' segun tu caso.",
-        "Fuera del catalogo actual: disenos de mezcla (simplex) y split-plot (factores "
-        "dificiles de cambiar); si aplica tu caso, considera esos metodos por separado.",
+        (f"Recommendation is conditional on model_order='{order}' "
+         f"(and effect_size={effect_size} for power)."),
+        ("\"Best\" is a multi-objective trade-off (runs vs precision vs prediction): "
+         "adjust 'priorities' for your case."),
+        ("Outside the current catalog: mixture designs (simplex) and split-plot "
+         "design generation (hard-to-change factors). If that is your case, design "
+         "those separately; for collected grouped/blocked data use "
+         "fit_mixed_model(groups=...) or fit_linear_model(blocks=...)."),
+        ("After the first experimental wave, use propose_next_runs / augment_design "
+         "to choose the next batch (sequential DoE) instead of restarting from scratch."),
     ]
     if any(isinstance(f, CategoricalFactor) for f in facs):
-        cav.append("Hay factores categoricos: los disenos RSM (Box-Behnken/CCD) asumen "
-                   "factores continuos; para categoricos prefiere factorial o D-optimo.")
+        cav.append(
+            "Categorical factors present: RSM designs (Box-Behnken/CCD) assume "
+            "continuous factors; prefer full factorial or D-optimal."
+        )
     return cav
 
 
 def _rationale(goal, k, order, budget, winner, prio) -> str:
-    obj = "identificar los factores influyentes" if goal == "screening" else \
-          "modelar la superficie de respuesta y localizar el optimo"
-    pres = f" con un presupuesto de {budget} corridas" if budget else ""
-    met = winner["metodo"]
+    obj = ("identify influential factors" if goal == "screening"
+           else "model the response surface and locate the optimum")
+    pres = f" with a budget of {budget} runs" if budget else ""
+    met = winner["method"]
     if winner.get("D_eff") is not None:
-        detalle = (f" ({winner['corridas']} corridas, D-eficiencia {winner['D_eff']}%, "
-                   f"G-eficiencia {winner['G_eff']}%)")
+        detalle = (f" ({winner['runs']} runs, D-efficiency {winner['D_eff']}%, "
+                   f"G-efficiency {winner['G_eff']}%)")
     else:
-        detalle = f" ({winner['corridas']} corridas)"
-    return (f"Para {obj} con {k} factores{pres} y un modelo '{order}', el mejor compromiso "
-            f"segun tus prioridades es {met}{detalle}.")
+        detalle = f" ({winner['runs']} runs)"
+    return (f"To {obj} with {k} factors{pres} and a '{order}' model, the best "
+            f"compromise under your priorities is {met}{detalle}.")

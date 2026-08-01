@@ -2,8 +2,9 @@ site_name: doekit
 site_description: >-
   Design of Experiments (DoE) in Python — screening, response surface,
   optimal design, and a design-evaluation/benchmarking layer.
-repo_url: https://github.com/qnowtech/doekit
-repo_name: qnowtech/doekit
+site_url: https://alejandro-qnow.github.io/doekit/
+repo_url: https://github.com/Alejandro-qnow/doekit
+repo_name: Alejandro-qnow/doekit
 copyright: MIT License
 
 theme:
@@ -53,6 +54,8 @@ plugins:
             Response surface: Superficie de respuesta
             Optimal design: Diseño óptimo
             Evaluation metrics: Métricas de evaluación
+            Blocked & mixed analysis: Análisis con bloques y mixtos
+            Sequential DoE: DoE secuencial
             Reporting: Reporte
             Guide: Guía
             API reference: Referencia de API
@@ -104,6 +107,8 @@ nav:
       - Response surface: theory/response-surface.md
       - Optimal design: theory/optimal-design.md
       - Evaluation metrics: theory/evaluation-metrics.md
+      - Blocked & mixed analysis: theory/blocked-and-mixed.md
+      - Sequential DoE: theory/sequential-doe.md
       - Reporting: theory/reporting.md
   - Guide:
       - Notebooks: guide/notebooks.md

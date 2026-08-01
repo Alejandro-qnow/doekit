@@ -8,7 +8,8 @@ import doekit as ed
 
 def test_kl_exchange_d_optimal_known_case():
     # Candidate set 3^5, modelo con un cuadratico, 11 corridas: D ~ 0.7305
-    cand = ed.full_factorial({f"factor{i+1}": [-1, 0, 1] for i in range(5)})    cand.model = ed.Model.parse(
+    cand = ed.full_factorial({f"factor{i+1}": [-1, 0, 1] for i in range(5)})
+    cand.model = ed.Model.parse(
         "0 ~ factor1 + factor2 + factor3 + factor4 + factor5 + factor3^2"
     )
     opt = ed.optimal_design(cand, n_runs=11, criterion="D", n_starts=5, seed=1)

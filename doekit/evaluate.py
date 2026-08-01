@@ -424,6 +424,33 @@ class DesignEvaluation:
             lines.append(f"  Max VIF: {float(np.nanmax(self.vif.to_numpy())):.2f}")
         return "\n".join(lines)
 
+    def to_dict(self) -> dict:
+        """Serialize to a JSON-safe dict (``schema: doekit.DesignEvaluation/1``)."""
+        def _num(v):
+            if v is None:
+                return None
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                return v
+            if np.isnan(fv) or np.isinf(fv):
+                return None
+            return fv
+
+        eff = {k: _num(v) if isinstance(v, (int, float, np.floating, np.integer))
+               else bool(v) if isinstance(v, (bool, np.bool_)) else v
+               for k, v in self.efficiencies.items()}
+        return {
+            "schema": "doekit.DesignEvaluation/1",
+            "n_runs": int(self.n_runs),
+            "n_params": int(self.n_params),
+            "dof": int(self.dof),
+            "efficiencies": eff,
+            "power": {str(k): _num(v) for k, v in self.power.items()},
+            "vif": {str(k): _num(v) for k, v in self.vif.items()},
+            "fds": self.fds.to_dict("list"),
+        }
+
     def __repr__(self) -> str:
         return self.summary()
 

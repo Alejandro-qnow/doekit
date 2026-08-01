@@ -154,10 +154,10 @@ _STRINGS = {
                         "central_composite) on the active factors.",
         "rec_anom": "There are {n} atypical/influential run(s): review the anomalous-values "
                     "section before concluding.",
-        # recommendation-table column display names
-        "rec_cols": {"metodo": "method", "corridas": "runs", "D_eff": "D-eff",
-                     "G_eff": "G-eff", "SPV_medio": "mean SPV",
-                     "en_presupuesto": "in budget", "soporta_modelo": "supports model"},
+        # recommendation-table column display names (keys = Recommendation.table cols)
+        "rec_cols": {"method": "method", "runs": "runs", "D_eff": "D-eff",
+                     "G_eff": "G-eff", "SPV_mean": "mean SPV",
+                     "in_budget": "in budget", "supports_model": "supports model"},
     },
     "es": {
         "title_default": "Reporte DoE — {kind}",
@@ -258,9 +258,9 @@ _STRINGS = {
                         "central_composite) en los factores activos.",
         "rec_anom": "Hay {n} corrida(s) atipica(s)/influyente(s): revisa la seccion de "
                     "valores anomalos antes de concluir.",
-        "rec_cols": {"metodo": "metodo", "corridas": "corridas", "D_eff": "D-eff",
-                     "G_eff": "G-eff", "SPV_medio": "SPV medio",
-                     "en_presupuesto": "en presupuesto", "soporta_modelo": "soporta modelo"},
+        "rec_cols": {"method": "metodo", "runs": "corridas", "D_eff": "D-eff",
+                     "G_eff": "G-eff", "SPV_mean": "SPV medio",
+                     "in_budget": "en presupuesto", "supports_model": "soporta modelo"},
     },
 }
 
@@ -274,7 +274,7 @@ def _t(lang: str, key: str):
 _KIND_TO_LABEL = {
     "PlackettBurman": "Plackett-Burman", "BoxBehnken": "Box-Behnken",
     "CentralComposite": "Central Composite", "DefinitiveScreening": "Definitive Screening",
-    "FullFactorial": "Factorial completo", "OptimalDesign": "D-optimo",
+    "FullFactorial": "Full factorial", "OptimalDesign": "D-optimal",
 }
 
 
@@ -295,9 +295,8 @@ def _recommendation_block(design: Design, model: Optional[Model]) -> Optional[di
     """Run the advisor for the inferred scenario and compare it with what was run.
 
     Returns a data dict (``method``, ``actual``, ``matches``, ``note``,
-    ``rationale``, ``table``, ``caveats``). The ``note``/``rationale``/``caveats``
-    come from :func:`recommend_design` (Spanish); the HTML renderer builds its own
-    localized note instead, but :func:`report_summary` exposes them as-is.
+    ``rationale``, ``table``, ``caveats``). Strings from :func:`recommend_design`
+    are English; the HTML renderer may localize its own note.
     """
     if model is None:
         return None
@@ -310,13 +309,13 @@ def _recommendation_block(design: Design, model: Optional[Model]) -> Optional[di
     actual = _KIND_TO_LABEL.get(design.metadata.get("kind", ""), design.metadata.get("kind", ""))
     matches = rec.method == actual
     if matches:
-        note = (f"El diseno ejecutado ({actual}) coincide con el recomendado para este "
-                "caso: buena eleccion.")
+        note = (f"The executed design ({actual}) matches the recommended method "
+                "for this case: good choice.")
     else:
-        note = (f"Para este caso ({goal}, {rec.scenario['n_factors']} factores, modelo "
-                f"'{order}', presupuesto {budget}), el diseno mas eficiente seria "
-                f"{rec.method}; ejecutaste {actual}. Es informativo, no un error: revisa la "
-                "tabla de alternativas y elige segun tus prioridades.")
+        note = (f"For this case ({goal}, {rec.scenario['n_factors']} factors, "
+                f"model '{order}', budget {budget}), the more efficient design would be "
+                f"{rec.method}; you ran {actual}. This is informative, not an error: "
+                "review the alternatives table and choose by your priorities.")
     return {"method": rec.method, "actual": actual, "matches": matches, "note": note,
             "rationale": rec.rationale, "table": rec.table, "caveats": rec.caveats}
 
@@ -324,7 +323,8 @@ def _recommendation_block(design: Design, model: Optional[Model]) -> Optional[di
 def report_summary(design: Design, response=None, model: Optional[Model] = None,
                    effect_size=1.0, sigma: float = 1.0, alpha: float = 0.05,
                    seed: Optional[int] = None, thresholds: Optional[dict] = None,
-                   lang: str = "en") -> dict:
+                   lang: str = "en", blocks=None, cov_type: str = "nonrobust",
+                   groups=None) -> dict:
     """Return the experiment's **semantic guide** without writing HTML.
 
     Same narrative content as the report (methodology, executive summary,
@@ -335,26 +335,54 @@ def report_summary(design: Design, response=None, model: Optional[Model] = None,
     ----------
     lang : {"en", "es"}, default "en"
         Language of the methodology/summary/recommendations prose.
+    blocks : str or array-like, optional
+        Fixed blocks for the OLS fit (see :func:`~doekit.analysis.fit_linear_model`).
+    cov_type : str, default "nonrobust"
+        Covariance type for the OLS fit.
+    groups : str or array-like, optional
+        If set, also fit a mixed model and include ``mixed_fit`` in the result.
 
     Returns
     -------
     dict
         Keys ``methodology``, ``quality``, ``executive_summary``,
-        ``recommendations``, ``anomalies`` and ``recommendation``.
+        ``recommendations``, ``anomalies``, ``recommendation``, and when a
+        response is provided also ``fit``, ``anova``; ``mixed_fit`` when
+        ``groups`` is set.
     """
+    from .analysis import anova_table, fit_mixed_model  # noqa: PLC0415
+
     thr = {**_DEFAULT_THRESHOLDS, **(thresholds or {})}
     model = model or design.model
     ev = _evaluate(design, model=model, effect_size=effect_size, sigma=sigma,
                    alpha=alpha, seed=seed)
-    fit = fit_linear_model(design, response, model=model) if response is not None else None
-    return {
+    fit = None
+    anova = None
+    mixed = None
+    if response is not None:
+        fit = fit_linear_model(design, response, model=model,
+                               blocks=blocks, cov_type=cov_type)
+        try:
+            anova = anova_table(fit)
+        except Exception:
+            anova = None
+        if groups is not None:
+            try:
+                mixed = fit_mixed_model(design, response, groups=groups, model=model)
+            except Exception:
+                mixed = None
+    out = {
         "methodology": _methodology_prose(design, model, lang),
         "quality": ev.efficiencies,
         "executive_summary": _executive_summary(design, ev.efficiencies, fit, thr, lang),
         "recommendations": _recommendations(design, ev.efficiencies, fit, thr, lang),
         "anomalies": fit.anomalies() if fit is not None else None,
         "recommendation": _recommendation_block(design, model),
+        "fit": fit.to_dict() if fit is not None else None,
+        "anova": anova.to_dict("records") if anova is not None else None,
+        "mixed_fit": mixed.to_dict() if mixed is not None else None,
     }
+    return out
 
 
 def run_report_arg(design, response=None, model=None, report=None, **extra):

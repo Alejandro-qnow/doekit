@@ -15,6 +15,8 @@ proyecto.
 | 06 | `06_machine_learning_tuning` | **[ML]** Tuning de hiperparámetros: el DoE supera a random search a presupuesto igual y dice qué perillas importan | `definitive_screening`, `main_effects`, `box_behnken` |
 | 07 | `07_quantum_ml_feature_map` | **[ML cuántico]** Screening de un feature map / kernel cuántico con mínimas evaluaciones de circuito (cada una = tiempo de QPU) | `definitive_screening`, `evaluate`, `central_composite` |
 | 08 | `08_asesor_casos` | **[Galería]** El asesor `recommend_design` en 6 casos lado a lado | `recommend_design`, `Recommendation` |
+| 09 | `09_analisis_bloques_mixed` | **[Análisis]** Bloques fijos, SE HC3, falta de ajuste y modelos mixtos REML | `attach_blocks`, `fit_linear_model`, `lack_of_fit`, `fit_mixed_model` |
+| 10 | `10_sequential_augment` | **[Secuencial]** Aumentar un diseño débil y decidir si valen corridas extra | `propose_next_runs`, `augment_design`, `compare_designs` |
 
 Los notebooks **04–07** comparten el patrón **construir → evaluar → benchmarkear**:
 cada uno usa una función-verdad conocida para medir qué tan bien el DoE recupera el

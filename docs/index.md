@@ -4,8 +4,8 @@
 surface and optimal design (D/A/I) — plus a **design-evaluation layer** that most
 Python DoE libraries lack.
 
-Depends only on `numpy`, `pandas` and `scipy`. `matplotlib` is optional (plots and
-HTML reports).
+Depends on `numpy`, `pandas`, `scipy` and `statsmodels`. `matplotlib` is optional
+(plots and HTML reports).
 
 ```bash
 pip install doekit            # core

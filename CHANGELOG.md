@@ -6,7 +6,50 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-### Cambiado — código en inglés y reporte enriquecido
+## [0.5.0] - 2026-08-01
+
+### Añadido — DoE secuencial / adaptativo
+- **`augment_design`**: añade corridas D/I-óptimas **condicionadas** a las filas
+  ya existentes (greedy + exchange sobre candidate set).
+- **`propose_next_runs`** + **`NextRunsProposal`** (`doekit.NextRunsProposal/1`):
+  lote siguiente, métricas before/after, rationale, caveats; con `response`
+  estima `sigma_hat` y términos activos.
+- **`compare_designs`** + **`DesignComparison`** (`doekit.DesignComparison/1`):
+  Δ D/A/G, SPV medio, potencia media, n_runs — “¿valen N corridas más?”.
+- Bridge BO delgado: **`candidates_from_bounds`**,
+  **`candidates_from_skopt_space`** (extra opcional `[bo]` = scikit-optimize).
+- Asesor: caveat que apunta a `propose_next_runs` tras la primera oleada.
+- Docs: `theory/sequential-doe.md`, notebook `10_sequential_augment.ipynb`,
+  `project/ROADMAP.md` (0.6 mixture/SPD, 0.7 `ed.experiment`).
+
+## [0.4.0] - 2026-08-01
+
+### Añadido — análisis experimental serio (`statsmodels` central)
+- **`statsmodels>=0.14`** pasa a dependencia **central** del núcleo (ya no solo
+  numpy/pandas/scipy).
+- **`fit_linear_model`**: parámetros `blocks=` (columna o array; respeta
+  `metadata["blocking"]`; `False` fuerza sin bloques) y `cov_type=`
+  (`nonrobust` / `HC0` / `HC1` / `HC3`).
+- **`attach_blocks`**: añade columna de bloque + metadata.
+- **`anova_table`**: tabla partial-F / Wald por término.
+- **`lack_of_fit`**: descompone RSS en pure error vs falta de ajuste (requiere réplicas).
+- **`fit_mixed_model`** + **`MixedFitResult`**: MixedLM (REML/ML) con `groups=` y
+  `re_formula`.
+- Serialización agent-first: `FitResult.to_dict/from_dict`
+  (`doekit.FitResult/1`), `MixedFitResult.to_dict/from_dict`
+  (`doekit.MixedFitResult/1`), `Recommendation.to_dict`
+  (`doekit.Recommendation/1`), `DesignEvaluation.to_dict`
+  (`doekit.DesignEvaluation/1`).
+- `report_summary` expone `fit`, `anova` y opcionalmente `mixed_fit`
+  (`blocks`, `cov_type`, `groups`).
+- Docs: `theory/blocked-and-mixed.md` (+ ES); notebook
+  `09_analisis_bloques_mixed.ipynb`.
+
+### Cambiado
+- Asesor (`recommend_design`): strings y columnas de tabla en **inglés**
+  (`method`, `runs`, `D-optimal`, `Full factorial`, …); caveats mencionan
+  `fit_mixed_model` / `blocks=` para datos agrupados.
+- Notas del reporte (`recommendation` block) en inglés por defecto.
 - **Código en inglés**: docstrings y comentarios de todo el paquete traducidos a
   inglés en estilo **NumPy** (Parameters/Returns/Notes), con docstrings añadidos a
   las funciones públicas que faltaban y type hints completados en `plotting`. Los

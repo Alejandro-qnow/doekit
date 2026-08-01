@@ -1,32 +1,19 @@
 """doekit: Design of Experiments (DoE) in Python.
 
 Screening, factorial and response-surface designs, optimal design (D/A/I),
-and a design-evaluation layer. Flat API::
+design evaluation, analysis, and sequential augmentation::
 
     import doekit as ed
 
-    # Screening
     pb = ed.plackett_burman(6)
-
-    # Factorial / real fraction with aliasing
-    ff = ed.full_factorial({"A": [-1, 1], "B": [-1, 1]})
-    fr = ed.fractional_factorial(3, generators=["C=AB"])
-
-    # Response surface with natural ranges
-    bb = ed.box_behnken({"temp": (20, 80), "ph": (3, 9), "conc": (0.1, 0.5)})
-    cc = ed.central_composite(3)
-
-    # Optimal design (D/A/I) from a candidate set
-    cand = ed.random_design([ed.ContinuousFactor("x1", 0, 1),
-                             ed.ContinuousFactor("x2", 0, 1)], n=200)
-    opt = ed.optimal_design(cand, n_runs=12, model=ed.Model.parse("0 ~ x1 + x2 + x1:x2"),
-                            criterion="D")
-
-    # Analysis
     fit = ed.fit_linear_model(pb, response=y)
+
+    # Sequential: propose the next batch
+    nxt = ed.propose_next_runs(pb, response=y, n_add=4)
+    print(nxt.comparison.summary)
 """
 
-__version__ = "0.3.0"
+__version__ = "0.5.0"
 
 from .factors import (Factor, ContinuousFactor, DiscreteFactor,
                       CategoricalFactor, as_factors, factor_from_dict)
@@ -39,11 +26,16 @@ from .designs import (Design, full_factorial, fractional_factorial,
                       box_behnken, central_composite, definitive_screening,
                       random_design, latin_hypercube, optimal_design,
                       kl_exchange, fedorov_exchange)
-from .analysis import fit_linear_model, main_effects, half_normal_data, FitResult
+from .analysis import (fit_linear_model, fit_mixed_model, main_effects,
+                       half_normal_data, anova_table, lack_of_fit,
+                       attach_blocks, FitResult, MixedFitResult)
 from .evaluate import (evaluate, efficiencies, power_analysis, vif,
                        alias_matrix, fds_data, DesignEvaluation)
 from .report import report_html as report, report_summary
 from .recommend import recommend_design, Recommendation
+from .sequential import (augment_design, propose_next_runs, compare_designs,
+                         NextRunsProposal, DesignComparison)
+from .bo import candidates_from_bounds, candidates_from_skopt_space
 
 __all__ = [
     # factors
@@ -60,7 +52,8 @@ __all__ = [
     "definitive_screening", "random_design", "latin_hypercube",
     "optimal_design", "kl_exchange", "fedorov_exchange",
     # analysis
-    "fit_linear_model", "main_effects", "half_normal_data", "FitResult",
+    "fit_linear_model", "fit_mixed_model", "main_effects", "half_normal_data",
+    "anova_table", "lack_of_fit", "attach_blocks", "FitResult", "MixedFitResult",
     # evaluation / benchmarking
     "evaluate", "efficiencies", "power_analysis", "vif", "alias_matrix",
     "fds_data", "DesignEvaluation",
@@ -68,4 +61,9 @@ __all__ = [
     "report", "report_summary",
     # design advisor
     "recommend_design", "Recommendation",
+    # sequential / adaptive
+    "augment_design", "propose_next_runs", "compare_designs",
+    "NextRunsProposal", "DesignComparison",
+    # BO bridge
+    "candidates_from_bounds", "candidates_from_skopt_space",
 ]

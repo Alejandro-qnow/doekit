@@ -4,8 +4,8 @@
 superficie de respuesta y diseño óptimo (D/A/I) — más una **capa de evaluación de
 diseños** que la mayoría de las librerías de DoE en Python no tiene.
 
-Solo depende de `numpy`, `pandas` y `scipy`. `matplotlib` es opcional (gráficas y
-reportes HTML).
+Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional
+(gráficas y reportes HTML).
 
 ```bash
 pip install doekit            # núcleo

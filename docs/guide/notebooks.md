@@ -1,6 +1,6 @@
 # Notebooks
 
-The repository ships eight explanatory notebooks (`notebooks/`) that narrate the
+The repository ships explanatory notebooks (`notebooks/`) that narrate the
 *why* of the methodological decisions, show the data and its distributions, and
 produce analysis plots. Run them with `uv run jupyter lab` from the project root.
 
@@ -14,6 +14,8 @@ produce analysis plots. Run them with `uv run jupyter lab` from the project root
 | 06 | `06_machine_learning_tuning` | **[ML]** Hyperparameter tuning: DoE beats random search at equal budget and says which knobs matter | `definitive_screening`, `main_effects`, `box_behnken` |
 | 07 | `07_quantum_ml_feature_map` | **[Quantum ML]** Screen a quantum feature map / kernel with minimal circuit evaluations (each = QPU time) | `definitive_screening`, `evaluate`, `central_composite` |
 | 08 | `08_asesor_casos` | **[Gallery]** The `recommend_design` advisor across 6 cases side by side | `recommend_design`, `Recommendation` |
+| 09 | `09_analisis_bloques_mixed` | **[Analysis]** Fixed blocks, HC3 SE, lack-of-fit and REML mixed models | `attach_blocks`, `fit_linear_model`, `lack_of_fit`, `fit_mixed_model` |
+| 10 | `10_sequential_augment` | **[Sequential]** Augment a weak design and decide if extra runs are worth it | `propose_next_runs`, `augment_design`, `compare_designs` |
 
 Notebooks **04–07** share the **build → evaluate → benchmark** pattern: each uses a
 known ground-truth function to measure how well the DoE recovers the optimum, and

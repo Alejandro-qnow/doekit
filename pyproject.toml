@@ -35,11 +35,13 @@ dependencies = [
     "numpy>=1.23",
     "pandas>=1.5",
     "scipy>=1.9",
+    "statsmodels>=0.14",
 ]
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.6"]
 report = ["matplotlib>=3.6"]
+bo = ["scikit-optimize>=0.9"]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.5",

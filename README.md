@@ -1,8 +1,8 @@
 # doekit
 
-**Design of Experiments (DoE) en Python**: screening, factoriales, superficie de respuesta y diseño óptimo (D/A/I). 
+**Design of Experiments (DoE) en Python**: screening, factoriales, superficie de respuesta, diseño óptimo (D/A/I) y análisis (OLS con bloques/SE robustos, modelos mixtos).
 
-Solo depende de `numpy`, `pandas` y `scipy`. `matplotlib` es opcional (gráficos).
+Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional (gráficos).
 
 - **Documentación (bilingüe EN/ES):** fuente en [`docs/`](docs/) (MkDocs) — introducción,
   teoría de cada metodología y referencia de API.
@@ -49,10 +49,12 @@ cand.model = ed.Model.parse("0 ~ x1 + x2 + x1:x2")
 opt = ed.optimal_design(cand, n_runs=12, criterion="D", n_starts=5, seed=1)
 opt.metadata["criteria"]           # {'D': ..., 'A': ..., 'I': ...}
 
-# --- Análisis: efectos y ajuste lineal ---
+# --- Análisis: efectos, bloques, robust SE, mixed ---
 y = ...                            # respuestas medidas por corrida
 effects = ed.main_effects(pb, y, scale="effect")   # efecto clásico = 2·beta
-fit = ed.fit_linear_model(pb, y)
+fit = ed.fit_linear_model(pb, y, cov_type="HC3")
+fit = ed.fit_linear_model(design, y, blocks="block")
+mix = ed.fit_mixed_model(design, y, groups="batch")
 fit.summary_frame()                # DataFrame con estimate/std_error/t/p
 ```
 
@@ -76,7 +78,8 @@ Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
 | **Asesor**                    | `recommend_design` (reglas + evaluación: recomienda el mejor método para el caso)                 |
 | Factores                      | `ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor` (codificación natural↔codificada)       |
 | Modelo                        | `Model.parse`, `Model.full_quadratic`, `Model.main_effects`                                       |
-| Análisis                      | `fit_linear_model`, `main_effects`, `half_normal_data`                                            |
+| Análisis                      | `fit_linear_model` (blocks, HC), `anova_table`, `lack_of_fit`, `fit_mixed_model`, `main_effects`  |
+| **Secuencial**                | `augment_design`, `propose_next_runs`, `compare_designs`, `candidates_from_bounds`                 |
 | Gráficos                      | `half_normal_plot`, `effects_plot`, `correlation_plot`, `fds_plot`, `power_plot`, `alias_heatmap` |
 
 
