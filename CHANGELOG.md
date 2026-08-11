@@ -6,6 +6,23 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-08-10
+
+### Añadido — workspace trazable de experimentos
+- **`ed.project` / `ExperimentProject` / `Wave`**: árbol
+  `experiments/experiment_project_<slug>/waves/wave_NNN/` con
+  `doe-configuration/`, `data/`, `results/`, `reports/`,
+  `automatic-conclusions/`, `metadata/`, `assets/`.
+- Contratos I/O: `manifest.json` (`planned` → `awaiting_response` →
+  `analyzed` → `concluded`), provenance y checksums.
+- **`Experiment.from_dict` / `save` / `load` / `conclude`** y
+  **`DesignEvaluation.from_dict`** para round-trip.
+- **`build_conclusions`**: `doekit.AutomaticConclusions/1` (facts, rules,
+  `gate_board`, contrato LLM) + `conclusions.md`.
+- CLI: `doekit project init|sync|conclude`.
+- Docs/skill de agentes actualizados para persistir oleadas y leer
+  `conclusions.json` sin inventar métricas.
+
 ## [0.7.0] - 2026-08-01
 
 ### Añadido — Experiment E2E, export y CLI

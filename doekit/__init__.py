@@ -42,6 +42,10 @@ from .orchestration.sequential import (augment_design, propose_next_runs,
 from .adapters.bo import candidates_from_bounds, candidates_from_skopt_space
 from .orchestration.experiment import Experiment, experiment, desirability_scores
 from .presentation.export import run_sheet, export_csv, export_excel
+from .presentation.workspace import (
+    ExperimentProject, Wave, open_project, project, DEFAULT_THRESHOLDS,
+    build_conclusions,
+)
 from .presentation.render import figures_mpl as plotting
 
 __all__ = [
@@ -79,6 +83,9 @@ __all__ = [
     "candidates_from_bounds", "candidates_from_skopt_space",
     # experiment aggregate
     "Experiment", "experiment", "desirability_scores",
+    # experiment workspace (traceable project → waves)
+    "ExperimentProject", "Wave", "open_project", "project",
+    "DEFAULT_THRESHOLDS", "build_conclusions",
     # export
     "run_sheet", "export_csv", "export_excel",
     # plotting (optional matplotlib)

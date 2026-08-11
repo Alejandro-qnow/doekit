@@ -24,10 +24,11 @@ Never invent efficiencies, rankings, or p-values — execute code and read
 DoE Progress:
 - [ ] Brief (required fields)
 - [ ] Experiment.from_goal → evaluate
+- [ ] Persist wave (ed.project / exp.save) when tracing sessions
 - [ ] Approve matrix → lab (pause; do not invent y)
-- [ ] ingest(y) → fit / mixed
-- [ ] Gate: stop | augment | redesign
-- [ ] If augment: next → new matrix → lab again
+- [ ] ingest(y) → fit / mixed → wave.sync / conclude
+- [ ] Gate: stop | augment | redesign (read conclusions.json gate_board)
+- [ ] If augment: next → new wave → new matrix → lab again
 ```
 
 ```python
@@ -40,8 +41,14 @@ print(exp.plan)                  # run sheet template
 # show rationale, caveats, table, matrix — ask approval
 exp.export_csv("runs.csv")       # lab-ready artifact
 
+# Optional traceable workspace (project → wave_NNN)
+proj = ed.project("my study")    # experiments/experiment_project_my-study/
+wave = exp.save(proj)            # writes doe-configuration/ + data/run_sheet.csv
+
 exp.ingest(y)                    # real lab data only (dict/DataFrame for multi-y)
 fit = exp.fit                    # from ingest(..., fit=True)
+wave.sync(exp)
+conclusions = exp.conclude(wave) # automatic-conclusions/ (facts + gates; no invented stats)
 nxt = exp.next(n_add=4)          # after ingest
 print(nxt.comparison.summary)
 
@@ -92,15 +99,17 @@ Argue “N more runs?” only with `compare_designs` / `nxt.comparison` deltas.
 
 ## Resume
 
-If `snap = exp.to_dict()` exists, rebuild — do not restart the brief from scratch:
+If a wave or `snap = exp.to_dict()` exists, rebuild — do not restart the brief from scratch:
 
 ```python
-design = ed.Design.from_dict(snap["design"])
-model = ed.Model.from_dict(snap["model"]) if snap.get("model") else None
-exp = ed.Experiment.from_design(design, model=model)
-if snap.get("response") is not None:
-    exp.ingest(snap["response"])
+# Prefer wave directory when available
+exp = ed.Experiment.load("experiments/experiment_project_my-study/waves/wave_001")
+
+# Or from an in-memory / file snapshot
+exp = ed.Experiment.from_dict(snap)
 ```
+
+Read `automatic-conclusions/conclusions.json` for `gate_board` / `rules`; paraphrase only.
 
 ## Rules
 

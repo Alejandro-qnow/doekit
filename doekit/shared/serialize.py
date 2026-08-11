@@ -10,6 +10,17 @@ def jsonify(obj):
 
     NaN/Inf float scalars become ``None`` so MCP and file codecs stay valid.
     """
+    try:
+        import pandas as pd  # noqa: PLC0415
+    except ImportError:  # pragma: no cover
+        pd = None
+
+    if pd is not None:
+        if isinstance(obj, pd.DataFrame):
+            return jsonify(obj.to_dict("records"))
+        if isinstance(obj, pd.Series):
+            return jsonify({str(k): v for k, v in obj.items()})
+
     if isinstance(obj, dict):
         return {k: jsonify(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):

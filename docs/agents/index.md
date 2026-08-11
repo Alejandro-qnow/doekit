@@ -47,4 +47,24 @@ or `@`-mention them in chat.
 
 - No secrets in factor names, metadata, or reports.
 - Prefer `ed.experiment(...)` / `Experiment.to_dict()` for handoff; export run sheets with `exp.export_csv`.
+- For multi-session research, persist with `ed.project(name)` → `wave` →
+  `automatic-conclusions/conclusions.json` (read gates; do not invent metrics).
 - Treat lab responses in HTML reports as sensitive when required.
+
+## Traceable workspace
+
+```text
+experiments/experiment_project_<slug>/
+  PROJECT.json
+  waves/wave_001/
+    doe-configuration/   # INPUT: experiment.json, design.json, thresholds.json
+    data/                # run_sheet.csv (+ responses.csv after lab)
+    results/             # evaluation.json, fit.json, next_runs.json
+    reports/             # optional HTML
+    automatic-conclusions/  # conclusions.json + .md (LLM/agent/human)
+    metadata/            # provenance + checksums
+    assets/              # researcher auxiliaries
+```
+
+- **Wave** = one DoE cycle (not a lab row). Lab row ids stay in `run_sheet.csv` as `run_id`.
+- Agents should load `conclusions.json` (`gate_board`, `rules`, `facts`) and only paraphrase those strings.

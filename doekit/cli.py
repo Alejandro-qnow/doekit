@@ -1,4 +1,4 @@
-"""Minimal CLI: ``doekit recommend|evaluate|experiment``."""
+"""Minimal CLI: ``doekit recommend|evaluate|experiment|project``."""
 
 from __future__ import annotations
 
@@ -88,6 +88,71 @@ def cmd_experiment(args):
         print(exp.plan.head().to_string(index=False))
 
 
+def _load_experiment_for_project(args):
+    import doekit as ed
+    if args.experiment_json:
+        data = json.loads(Path(args.experiment_json).read_text(encoding="utf-8"))
+        return ed.Experiment.from_dict(data)
+    if not args.factors:
+        raise SystemExit("provide --experiment-json or --factors")
+    factors = _parse_factors(args.factors)
+    responses = args.responses.split(",") if args.responses else ["y"]
+    exp = ed.experiment(
+        goal=args.goal, factors=factors, budget=args.budget,
+        responses=responses, seed=args.seed,
+    )
+    exp.evaluate(n_region=args.n_region, seed=args.seed)
+    return exp
+
+
+def cmd_project_init(args):
+    import doekit as ed
+    proj = ed.ExperimentProject.create(
+        args.name, root=args.root, description=args.description or "",
+    )
+    print(f"Project ready: {proj.path}")
+    return 0
+
+
+def cmd_project_sync(args):
+    import doekit as ed
+    from doekit.presentation.workspace import Wave, open_project
+    path = Path(args.path)
+    exp = _load_experiment_for_project(args)
+    if (path / "PROJECT.json").exists():
+        proj = open_project(path)
+        wave = proj.new_wave(exp, seed=args.seed)
+    elif (path / "manifest.json").exists():
+        wave = Wave(path)
+        wave.sync(exp, seed=args.seed, write_report=args.report)
+    else:
+        raise SystemExit(f"path is neither a project nor a wave: {path}")
+    print(f"Synced wave: {wave.path} (status={wave.manifest.get('status')})")
+    return 0
+
+
+def cmd_project_conclude(args):
+    import doekit as ed
+    from doekit.presentation.workspace import Wave
+    path = Path(args.path)
+    if not (path / "manifest.json").exists():
+        raise SystemExit(f"conclude requires a wave path, got: {path}")
+    wave = Wave(path)
+    exp = wave.load_experiment()
+    conclusions = wave.conclude(
+        exp, lang=args.lang, write_html=args.report,
+    )
+    out = path / "automatic-conclusions" / "conclusions.json"
+    if args.json:
+        print(json.dumps(conclusions, indent=2))
+    else:
+        process = (conclusions.get("gate_board") or {}).get("process") or {}
+        print(f"Wrote {out}")
+        print(f"process gate: {process.get('status')}")
+        print(f"quality: {(conclusions.get('gate_board') or {}).get('quality')}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="doekit", description="doekit DoE CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -128,6 +193,41 @@ def main(argv=None) -> int:
     px.add_argument("--seed", type=int, default=0)
     px.add_argument("--json", action="store_true")
     px.set_defaults(func=cmd_experiment)
+
+    pp = sub.add_parser("project", help="Traceable experiment project workspace")
+    psub = pp.add_subparsers(dest="project_cmd", required=True)
+
+    pi = psub.add_parser("init", help="Create experiment_project_<slug>/")
+    pi.add_argument("--name", required=True, help="Human project name")
+    pi.add_argument("--root", default="experiments",
+                    help="Parent directory (default: experiments)")
+    pi.add_argument("--description", default="")
+    pi.set_defaults(func=cmd_project_init)
+
+    ps = psub.add_parser("sync", help="Write a wave from Experiment JSON or flags")
+    ps.add_argument("--path", required=True,
+                    help="Project dir or wave dir")
+    ps.add_argument("--experiment-json", default=None,
+                    help="Path to Experiment.to_dict() JSON")
+    ps.add_argument("--factors", default=None,
+                    help="Integer N or name:low:high,... (if no JSON)")
+    ps.add_argument("--goal", default="screening",
+                    choices=["screening", "optimization"])
+    ps.add_argument("--budget", type=int, default=None)
+    ps.add_argument("--responses", default="y")
+    ps.add_argument("--n-region", type=int, default=4000)
+    ps.add_argument("--seed", type=int, default=0)
+    ps.add_argument("--report", action="store_true",
+                    help="Also write HTML under wave/reports/")
+    ps.set_defaults(func=cmd_project_sync)
+
+    pc = psub.add_parser("conclude", help="Write automatic-conclusions for a wave")
+    pc.add_argument("--path", required=True, help="Wave directory")
+    pc.add_argument("--lang", default="en", choices=["en", "es"])
+    pc.add_argument("--report", action="store_true",
+                    help="Also write HTML under wave/reports/")
+    pc.add_argument("--json", action="store_true")
+    pc.set_defaults(func=cmd_project_conclude)
 
     args = p.parse_args(argv)
     args.func(args)

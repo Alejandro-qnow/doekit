@@ -459,6 +459,33 @@ class DesignEvaluation:
             "fds": self.fds.to_dict("list"),
         }
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "DesignEvaluation":
+        """Rebuild a :class:`DesignEvaluation` from :meth:`to_dict` output."""
+        if d.get("schema") not in (None, "doekit.DesignEvaluation/1"):
+            raise ValueError(f"unsupported DesignEvaluation schema: {d.get('schema')!r}")
+
+        def _maybe_float(v):
+            if v is None:
+                return float("nan")
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return v
+
+        power = d.get("power") or {}
+        vif_d = d.get("vif") or {}
+        fds_d = d.get("fds") or {}
+        return cls(
+            n_runs=int(d["n_runs"]),
+            n_params=int(d["n_params"]),
+            dof=int(d["dof"]),
+            efficiencies=dict(d.get("efficiencies") or {}),
+            power=pd.Series({k: _maybe_float(v) for k, v in power.items()}),
+            vif=pd.Series({k: _maybe_float(v) for k, v in vif_d.items()}),
+            fds=pd.DataFrame(fds_d) if fds_d else pd.DataFrame(),
+        )
+
     def __repr__(self) -> str:
         return self.summary()
 

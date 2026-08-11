@@ -18,6 +18,9 @@ Self-contained cheat sheet for the skill. Import: `import doekit as ed`.
 | `ed.compare_designs(a, b, ...)` | Δ D/A/G, SPV, power, runs |
 | `ed.report(design, response=y, lang="es"\|"en", self_contained=...)` | Rule-based HTML |
 | `ed.report_summary(design, response=y, ...)` | Same narrative as structured dict (agents) |
+| `ed.project(name)` / `ExperimentProject` / `Wave` | Traceable on-disk project → waves |
+| `exp.save(project\|wave)` / `Experiment.load(path)` / `exp.conclude(wave)` | Persist + automatic conclusions |
+| `ed.build_conclusions(...)` | `doekit.AutomaticConclusions/1` (gates + rules) |
 | `ed.candidates_from_bounds(...)` | Candidate points from factor bounds |
 
 ## Recommendation
@@ -71,8 +74,19 @@ Prefer `Constraints(...)` over deprecated `constrained=True` (`irregular=True`).
 
 | Schema / object | Source |
 |-----------------|--------|
-| `doekit.Experiment/1` | `Experiment.to_dict()` |
+| `doekit.Experiment/1` | `Experiment.to_dict()` / `Experiment.from_dict` |
 | `Design` / `Model` | `Design.from_dict` / `Model.from_dict` (resume) |
 | `FitResult` / `MixedFitResult` | `fit.to_dict()` |
-| `DesignEvaluation` | `evaluate(...).to_dict()` |
+| `DesignEvaluation` | `evaluate(...).to_dict()` / `DesignEvaluation.from_dict` |
 | `Recommendation` | `recommend_design(...).to_dict()` |
+| `doekit.ExperimentProject/1` | `PROJECT.json` |
+| `doekit.WaveManifest/1` | `waves/wave_NNN/manifest.json` |
+| `doekit.AutomaticConclusions/1` | `automatic-conclusions/conclusions.json` |
+
+## Workspace CLI
+
+```text
+doekit project init --name "My Study" --root experiments
+doekit project sync --path experiments/experiment_project_my-study --factors 6 --budget 12
+doekit project conclude --path experiments/experiment_project_my-study/waves/wave_001
+```

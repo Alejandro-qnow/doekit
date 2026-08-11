@@ -6,6 +6,7 @@ embedding presentation side-effects in domain functions.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
@@ -261,6 +262,133 @@ class Experiment:
                                if self.recommendation is not None else None),
             "metadata": dict(self.metadata),
         })
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "Experiment":
+        """Rebuild an :class:`Experiment` from :meth:`to_dict` output."""
+        if d.get("schema") not in (None, "doekit.Experiment/1"):
+            raise ValueError(f"unsupported Experiment schema: {d.get('schema')!r}")
+        if not d.get("design"):
+            raise ValueError("Experiment snapshot missing design")
+        design = Design.from_dict(d["design"])
+        model = Model.from_dict(d["model"]) if d.get("model") else design.model
+        names = list(d.get("response_names") or ["y"])
+        exp = cls(
+            design=design,
+            model=model,
+            response_names=names,
+            metadata=dict(d.get("metadata") or {"response_names": names}),
+        )
+        if d.get("evaluation"):
+            exp.evaluation = DesignEvaluation.from_dict(d["evaluation"])
+        # Prefer multi-column responses; fall back to primary response vector
+        if d.get("responses"):
+            frame = pd.DataFrame(d["responses"])
+            exp.responses = frame
+            exp.response_names = list(frame.columns)
+            exp.response = frame.iloc[:, 0].to_numpy(dtype=float)
+        elif d.get("response") is not None:
+            arr = np.asarray(d["response"], dtype=float)
+            name = names[0] if names else "y"
+            exp.responses = pd.DataFrame({name: arr})
+            exp.response = arr
+            exp.response_names = [name]
+        fits_raw = d.get("fits") or {}
+        if fits_raw:
+            exp.fits = {k: FitResult.from_dict(v) for k, v in fits_raw.items()}
+            first = exp.response_names[0] if exp.response_names else next(iter(exp.fits))
+            exp.fit = exp.fits.get(first) or next(iter(exp.fits.values()))
+        elif d.get("fit"):
+            exp.fit = FitResult.from_dict(d["fit"])
+            key = exp.response_names[0] if exp.response_names else "y"
+            exp.fits = {key: exp.fit}
+        # Recommendation is optional narrative; keep payload in metadata if present
+        if d.get("recommendation"):
+            exp.metadata = {
+                **exp.metadata,
+                "recommendation_snapshot": d["recommendation"],
+            }
+        return exp
+
+    def save(
+        self,
+        target: Union[str, Path, Any],
+        *,
+        thresholds: Optional[Mapping[str, float]] = None,
+        seed: Optional[int] = None,
+        write_report: bool = False,
+        comparison=None,
+        next_runs=None,
+    ) -> Any:
+        """Persist into a :class:`~doekit.presentation.workspace.Wave` or project.
+
+        ``target`` may be a :class:`~doekit.presentation.workspace.Wave`, an
+        :class:`~doekit.presentation.workspace.ExperimentProject` (creates a new
+        wave), or a filesystem path to either.
+        """
+        from ...presentation.workspace import (  # noqa: PLC0415
+            ExperimentProject, Wave, open_project,
+        )
+        if isinstance(target, Wave):
+            wave = target
+        elif isinstance(target, ExperimentProject):
+            wave = target.new_wave(self, thresholds=thresholds, seed=seed)
+            return wave
+        else:
+            path = Path(target)
+            if (path / "PROJECT.json").exists():
+                proj = open_project(path)
+                return proj.new_wave(self, thresholds=thresholds, seed=seed)
+            if (path / "manifest.json").exists():
+                wave = Wave(path)
+            else:
+                raise FileNotFoundError(
+                    f"save target is neither a project nor a wave: {path}"
+                )
+        wave.sync(
+            self,
+            write_report=write_report,
+            comparison=comparison,
+            next_runs=next_runs,
+            thresholds=thresholds,
+            seed=seed,
+        )
+        return wave
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> "Experiment":
+        """Load from a wave directory or ``doe-configuration/experiment.json``."""
+        from ...presentation.workspace import Wave  # noqa: PLC0415
+        path = Path(path)
+        if path.is_file() and path.name == "experiment.json":
+            return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        if (path / "manifest.json").exists():
+            return Wave(path).load_experiment()
+        cfg = path / "doe-configuration" / "experiment.json"
+        if cfg.exists():
+            return cls.from_dict(json.loads(cfg.read_text(encoding="utf-8")))
+        raise FileNotFoundError(f"cannot load Experiment from {path}")
+
+    def conclude(
+        self,
+        wave: Union[str, Path, Any],
+        *,
+        thresholds: Optional[Mapping[str, float]] = None,
+        lang: str = "en",
+        write_html: bool = False,
+        comparison=None,
+    ) -> dict:
+        """Write automatic conclusions into a wave (semantic handoff artifact)."""
+        from ...presentation.workspace import Wave  # noqa: PLC0415
+        if not isinstance(wave, Wave):
+            wave = Wave(wave)
+        return wave.conclude(
+            self,
+            thresholds=thresholds,
+            lang=lang,
+            write_html=write_html,
+            comparison=comparison,
+        )
 
 
 def experiment(goal: str = "screening", factors=None, budget: Optional[int] = None,
