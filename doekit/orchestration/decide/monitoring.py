@@ -20,23 +20,38 @@ from ...shared.serialize import jsonify as _jsonify
 
 @dataclass
 class ConvergenceResult:
-    """Whether a sequential run has stopped improving.
+    """Whether a sequential experiment has stopped improving.
+
+    Produced by :func:`check_convergence` and consumed by
+    :func:`~doekit.orchestration.decide.decide_next_action` as a hard stop when
+    ``should_stop`` is ``True``.
 
     Attributes
     ----------
     converged, should_stop : bool
-        ``should_stop`` is what :func:`decide_next_action` consumes.
+        ``should_stop`` is what :func:`decide_next_action` reads.
     reason : str
         Human-readable explanation.
     metric_key : str
         Which per-step value was tracked (e.g. ``"best_so_far"`` for optimize,
         ``"delta_D_efficiency"`` for learn).
+    marginal_threshold : float
+        Tolerance on consecutive marginal changes.
+    consecutive_required : int
+        Non-improving steps required to declare convergence.
     consecutive_hits : int
         Number of trailing steps whose marginal change was within tolerance.
     last_improvements : list of float
         The trailing marginal changes examined.
     observed_points : int
         How many values were extracted from the history.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> res = ed.check_convergence([10.0, 10.2, 10.1, 10.15], metric_key="best_so_far")
+    >>> res.observed_points == 4
+    True
     """
 
     converged: bool
@@ -94,7 +109,18 @@ def check_convergence(history: Iterable[Any], metric_key: str = "best_so_far",
                       marginal_threshold: float = 0.5,
                       consecutive_required: int = 2,
                       min_points: int = 3) -> ConvergenceResult:
-    """Detect convergence by consecutive marginal changes within tolerance.
+    """Detect convergence from consecutive marginal changes within tolerance.
+
+    Extracts ``metric_key`` from each history entry (scalar, dict, or object),
+    computes step-to-step improvements, and declares convergence when the last
+    ``consecutive_required`` improvements all have magnitude at most
+    ``marginal_threshold``.
+
+    Formulas
+    --------
+    - ``improvement_i = value_i - value_{i-1}`` for ``i = 1..n-1``.
+    - Converged when the trailing streak of steps with
+      ``|improvement_i| <= marginal_threshold`` reaches ``consecutive_required``.
 
     Parameters
     ----------
@@ -113,6 +139,20 @@ def check_convergence(history: Iterable[Any], metric_key: str = "best_so_far",
     Returns
     -------
     ConvergenceResult
+        Verdict with ``should_stop=True`` when convergence is detected.
+
+    Notes
+    -----
+    With fewer than ``min_points`` valid values, returns ``should_stop=False``
+    with reason ``"Insufficient history..."``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = [{"best_so_far": 1.0}, {"best_so_far": 1.01}, {"best_so_far": 1.005}]
+    >>> res = ed.check_convergence(hist, marginal_threshold=0.1, consecutive_required=2)
+    >>> isinstance(res.should_stop, bool)
+    True
     """
     values = [v for v in (_extract_value(it, metric_key) for it in history) if v is not None]
     improvements = [values[i] - values[i - 1] for i in range(1, len(values))]
@@ -155,7 +195,28 @@ def check_convergence(history: Iterable[Any], metric_key: str = "best_so_far",
 
 @dataclass
 class DiagnosticIssue:
-    """A single per-step diagnostic with severity and an actionable fix."""
+    """A single per-step diagnostic with severity and an actionable fix.
+
+    Attributes
+    ----------
+    code : str
+        Machine-readable issue code (e.g. ``"LOW_POWER_GAIN"``).
+    severity : str
+        One of ``"error"``, ``"warning"``, or ``"info"``.
+    message : str
+        Human-readable description of the issue.
+    recommendation : str
+        Suggested next action for the experimenter.
+    metadata : dict
+        Supporting numeric context for the issue.
+
+    Examples
+    --------
+    >>> from doekit.orchestration.decide.monitoring import DiagnosticIssue
+    >>> issue = DiagnosticIssue("TEST", "info", "ok", "continue")
+    >>> issue.severity == "info"
+    True
+    """
 
     code: str
     severity: str  # "error" | "warning" | "info"
@@ -173,7 +234,22 @@ class DiagnosticIssue:
 
 @dataclass
 class DiagnosticsReport:
-    """Aggregated per-step diagnostics."""
+    """Aggregated per-step diagnostics from :func:`diagnose_step`.
+
+    Attributes
+    ----------
+    issues : list of DiagnosticIssue
+        All flagged problems for the current wave.
+    summary : str
+        One-line count of errors, warnings, and info items.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> rep = ed.diagnose_step({"n_add": 2, "delta_mean_power": 0.0})
+    >>> rep.has_issues
+    True
+    """
 
     issues: list = field(default_factory=list)
     summary: str = ""
@@ -199,7 +275,11 @@ def diagnose_step(metrics: dict, *, budget_remaining: Optional[float] = None,
                   uncertainty: Optional[float] = None, convergence=None,
                   min_power_gain: float = 0.01, max_negative_g_eff: float = -2.0,
                   high_uncertainty: float = 0.7) -> DiagnosticsReport:
-    """Flag per-wave problems the fit-level diagnostics do not cover.
+    """Flag per-wave problems that fit-level diagnostics do not cover.
+
+    Checks power gain, G-efficiency degradation, budget overflow, surrogate
+    uncertainty, and optional convergence — complementing
+    :func:`~doekit.orchestration.decide.decide_next_action`.
 
     Parameters
     ----------
@@ -210,13 +290,33 @@ def diagnose_step(metrics: dict, *, budget_remaining: Optional[float] = None,
     budget_remaining : float, optional
         Remaining runs; a proposal exceeding it is a blocking error.
     uncertainty : float, optional
-        Normalized uncertainty; above ``high_uncertainty`` is a warning.
+        Normalized uncertainty in ``[0, 1]``; above ``high_uncertainty`` is a warning.
     convergence : ConvergenceResult, optional
         If it stopped, an informational issue is added.
+    min_power_gain : float, default 0.01
+        Minimum acceptable ``delta_mean_power`` (learn intent).
+    max_negative_g_eff : float, default -2.0
+        G-efficiency drop threshold for a prediction-degradation warning.
+    high_uncertainty : float, default 0.7
+        Uncertainty level that triggers a warning.
 
     Returns
     -------
     DiagnosticsReport
+        Aggregated issues and summary string.
+
+    Notes
+    -----
+    Optimize proposals without learn deltas skip power/G gates intentionally —
+    gating on missing keys would raise spurious warnings there.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> rep = ed.diagnose_step(
+    ...     {"n_add": 4, "delta_mean_power": 0.005}, budget_remaining=10)
+    >>> rep.summary.startswith("Diagnostics:")
+    True
     """
     issues: list[DiagnosticIssue] = []
     n_add = float(metrics.get("n_add", metrics.get("extra_runs", 0.0)))

@@ -1,0 +1,97 @@
+# Bayesian optimization (the optimize loop)
+
+Sequential DoE has two intentions that share one call. **Learn** sharpens the
+*model* (D/I-optimal augmentation — see [Sequential DoE](sequential-doe.md)).
+**Optimize** moves the *result*: it fits a surrogate to the responses and picks the
+next runs by an acquisition function. From **doekit 0.8**, `intent="optimize"` on
+`propose_next_runs` / `Experiment.next` closes that loop.
+
+| | `intent="learn"` (default) | `intent="optimize"` |
+|--|--|--|
+| Question | *Which factors? How precise?* | *Where is the best setting?* |
+| Engine | D/I-optimal augmentation | surrogate + acquisition |
+| Reads | `comparison` deltas | `best_so_far`, `predicted_improvement`, `explore_exploit` |
+
+## The surrogate
+
+A surrogate is a cheap probabilistic model of the response that returns a
+predictive **mean and standard deviation**, $\hat{f}(x) \to (\mu(x), \sigma(x))$.
+doekit ships two, behind one factory `fit_surrogate(design, y, kind=...)`:
+
+- **`OLSSurrogate`** (default, no extra deps): the fitted response surface; $\mu(x)$
+  is the OLS prediction and $\sigma(x)$ its prediction standard error.
+- **`GPSurrogate`** (`doekit[bo]`): a Gaussian Process whose **prior mean is the OLS
+  surface**. With prior mean $m(x)=x^\top\hat\beta$ and kernel $k$, the posterior at
+  $x$ given data $(X, y)$ is
+
+$$
+\mu(x) = m(x) + k_*^\top \big(K + \sigma_n^2 I\big)^{-1}\big(y - m(X)\big),
+\qquad
+\sigma^2(x) = k(x,x) - k_*^\top \big(K + \sigma_n^2 I\big)^{-1} k_*,
+$$
+
+with $k_* = k(X, x)$. The reported $\sigma(x)$ combines the trend standard error,
+the GP posterior term, and noise, so it **grows away from the observed runs** — the
+honest signal an optimizer needs to know where it is guessing.
+
+### Trust before you claim an optimum
+
+A confident-looking optimum on a mis-calibrated surrogate is a trap. doekit audits
+$\sigma(x)$ by **leave-one-out (LOO) interval coverage**: for nominal levels (50 %,
+80 %, 95 %) it measures how often the held-out point falls inside the predicted
+interval. Coverage far *below* nominal means the surrogate is over-confident.
+
+```python
+sur = ed.fit_surrogate(design, y, kind="auto")   # GP if doekit[bo], else OLS
+mu, sd = sur.predict(X_new)
+sur.calibration(levels=(0.5, 0.8, 0.95))          # coverage vs nominal + rmse
+```
+
+## Acquisition functions
+
+Given $(\mu(x), \sigma(x))$ and the best value so far $f^*$, an acquisition scores
+each candidate by balancing exploitation ($\mu$) against exploration ($\sigma$).
+With $z = \dfrac{\mu(x) - f^* - \xi}{\sigma(x)}$ and $\Phi, \phi$ the standard normal
+CDF/PDF:
+
+$$
+\mathrm{EI}(x) = (\mu(x) - f^* - \xi)\,\Phi(z) + \sigma(x)\,\phi(z), \qquad
+\mathrm{PI}(x) = \Phi(z), \qquad
+\mathrm{UCB}(x) = \mu(x) + \kappa\,\sigma(x).
+$$
+
+`get_acquisition("ei"|"ucb"|"pi")` returns these; `ei` is the single-objective
+default. A batch is chosen by the *constant-liar* (Kriging-Believer) scheme:
+propose one point, assume its predicted value, refit, repeat — so the batch spreads
+out instead of clustering on one peak, respecting the factor region / simplex.
+
+### Multi-objective (Pareto / EHVI)
+
+With several responses and `goals={col: "max"|"min"}`, there is no single best: the
+trade-off surface is the **Pareto front** (points not dominated by any other). The
+default acquisition becomes **EHVI** — expected improvement of the dominated
+**hypervolume** — via `expected_hypervolume_improvement`, with helpers
+`pareto_front`, `pareto_mask`, `dominates`, `hypervolume`.
+
+## Example
+
+```python
+import doekit as ed
+
+# single objective: maximize yield
+nxt = ed.propose_next_runs(design, response=y, n_add=4,
+                           intent="optimize", acquisition="ei")
+print(nxt.best_so_far, nxt.predicted_improvement, nxt.explore_exploit["mode"])
+nxt.surrogate.calibration()          # audit sigma(x) before trusting best_so_far
+
+# multi-objective: maximize yield, minimize cost
+exp.ingest({"yield": y1, "cost": y2})
+nxt = ed.propose_next_runs(design, response=Y, n_add=4, intent="optimize",
+                           goals={"yield": "max", "cost": "min"})   # -> EHVI
+print(nxt.pareto_front)
+```
+
+The proposal is fed to the [agentic layer](agentic-layer.md): `interpret` reads it,
+and the decision engine turns `predicted_improvement` / `explore_exploit` into
+**stop / augment / refine / redesign** — never penalizing the D-efficiency drop the
+surrogate loop can cause.

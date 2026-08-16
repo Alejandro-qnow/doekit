@@ -1,8 +1,14 @@
 # Agents
 
-Portable **doekit experiment-designer** skill: teach an agent the DoE loop
-(brief → recommend → evaluate → lab → ingest → analyze → next) without inventing
-metrics.
+doekit is **hybrid**: the same engine serves people and **LLM agents**. Agents
+reach it two ways, sharing one contract — *facts from doekit, judgment from the
+agent*:
+
+- **Skill** — the portable **experiment-designer** skill teaches the DoE loop
+  (brief → recommend → evaluate → lab → ingest → analyze → **interpret** → decide →
+  next) without inventing metrics. Below.
+- **[MCP server](mcp.md)** — the same loop as callable tools (recommend / evaluate
+  / propose_and_decide) over the Model Context Protocol.
 
 ## Skill package (copy these two files)
 

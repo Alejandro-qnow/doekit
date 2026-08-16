@@ -1,12 +1,38 @@
 # doekit
 
-**Diseño de Experimentos (DoE) en Python**: screening, diseños factoriales,
-superficie de respuesta, diseño óptimo (D/A/I), mezcla / split-plot, aumento
-secuencial — más una **capa de evaluación de diseños** que la mayoría de las
-librerías de DoE en Python no tiene.
+**Diseño de Experimentos (DoE) en Python** con un **enfoque híbrido** — **personas**
+(laboratorio) y **agentes LLM** que lo consumen **vía MCP** — sobre un mismo motor
+determinista. doekit no solo *construye* diseños: los **interpreta** y los
+**evalúa**, con rigor.
+
+Una **capa semántica** ([`interpret`/`Interpretation`](agents/reference.md))
+convierte cifras en significado — *qué significa, por qué, qué hacer, con qué
+salvedades* — **sin inventar nada**: **los hechos vienen de doekit; el juicio, del
+usuario**. Misma verdad, dos superficies: `summary()` / reportes HTML para
+personas, `to_dict()` / `for_llm()` para agentes. Cubre screening, superficie de
+respuesta, diseño óptimo, mezcla/split-plot y DoE secuencial (**aprender** u
+**optimizar**), con el flujo de razonamiento *brief → recommend → evaluate → \[lab:
+ingest\] → analyze → **interpret** → decide (stop/augment/refine/redesign) → next*.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Design: User / Agent
+    Design --> Recommend
+    Recommend --> Learn: if learn
+    Recommend --> Optimize: if optimize
+    Learn --> Semantic
+    Optimize --> Semantic
+
+    state best <<choice>>
+    Semantic --> best
+    best --> [*]: if stop
+    best --> Design: if continue
+```
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional
-(gráficas y reportes HTML).
+(gráficas y reportes HTML); `doekit[mcp]` sirve las tools para agentes y
+`doekit[bo]` añade el surrogate GP.
 
 ```bash
 pip install doekit            # núcleo
@@ -36,21 +62,26 @@ cand.model = ed.Model.parse("0 ~ x1 + x2 + x1:x2")
 opt = ed.optimal_design(cand, n_runs=12, criterion="D", n_starts=5, seed=1)
 ```
 
-## Lo que distingue a doekit: evaluar el diseño, no solo construirlo
+## Lo que distingue a doekit: interpretar y evaluar, no solo construir
 
-La mayoría de las librerías de DoE en Python **solo generan** diseños. `doekit`
-además le da a cada uno un **boletín de calidad** reproducible que responde *"¿qué
-tan lejos está mi diseño del óptimo teórico?"* — la mitad del trabajo que hacen las
-herramientas comerciales (JMP, Design-Expert):
+La mayoría de las librerías de DoE en Python **solo generan** diseños. doekit añade
+los otros dos tercios del trabajo que hacen las herramientas comerciales (JMP,
+Design-Expert) — y lo hace una sola vez para ambos públicos:
+
+1. **Interpretar** — la capa semántica lee cualquier resultado (recomendación,
+   evaluación, ajuste, propuesta, comparación) como `qué significa / por qué /
+   salvedades`, misma verdad para una persona o un agente.
+2. **Evaluar** — un **boletín de calidad** reproducible: *"¿qué tan lejos está mi
+   diseño del óptimo teórico?"*
+3. **Construir** — el catálogo completo de generadores.
 
 ```python
 ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
-print(ev.summary())
-#   D/A/G-eficiencia, distribución de la SPV (FDS),
-#   potencia por término, VIF, estructura de alias ...
+#   D/A/G-eficiencia, distribución de la SPV (FDS), potencia por término, VIF, alias
 
-ed.report(bb, response=y)   # carpeta HTML (requiere doekit[report])
-# O el bucle agregado: ed.experiment(goal=..., factors=..., budget=...)
+print(ed.interpret(ev).for_llm())   # capa semántica: cifras -> significado (sin inventar)
+ed.report(bb, response=y)           # carpeta HTML para personas (requiere doekit[report])
+# Bucle agregado: ed.experiment(goal=..., factors=..., budget=...)
 ```
 
 ## Por dónde seguir
@@ -61,5 +92,7 @@ ed.report(bb, response=y)   # carpeta HTML (requiere doekit[report])
 - **Referencia de API** — autogenerada desde los docstrings del código.
 - **Guía** — los [notebooks](guide/notebooks.md) recorren casos reales por dominio
   (química, ML, ML cuántico) con el patrón *construir → evaluar → benchmarkear*.
-- **Agentes** — skill portable del [diseñador de experimentos](agents/index.md)
-  para Cursor, Claude y VS Code (copia `docs/agents/` a la carpeta de skills).
+- **Agentes y MCP** — el skill portable del
+  [diseñador de experimentos](agents/index.md) y el [servidor MCP](agents/mcp.md)
+  que expone doekit como tools para agentes (recommend / evaluate /
+  propose_and_decide).

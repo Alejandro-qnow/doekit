@@ -39,7 +39,7 @@ def split_plot_design(
     model: Optional[Model] = None,
     seed: Optional[int] = None,
 ) -> Design:
-    """Build a simple split-plot design.
+    """Build a simple split-plot design (whole-plot / subplot structure).
 
     Whole-plot (hard-to-change) factor combinations define plots; within each
     plot, all subplot factor combinations are run. Plot identity is stored in
@@ -67,6 +67,20 @@ def split_plot_design(
     -------
     Design
         Matrix includes treatment columns plus ``whole_plot_id``.
+
+    Raises
+    ------
+    InapplicableDesign
+        When whole_plot or subplot is empty or factor types are unsupported.
+    ValueError
+        When factor names overlap or ``n_whole_plots < 1``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.split_plot_design(whole_plot=1, subplot=2)
+    >>> "whole_plot_id" in d.matrix.columns
+    True
     """
     wp = as_factors(whole_plot)
     sp = as_factors(subplot)

@@ -20,6 +20,16 @@ def main_effects(design: Design, response, model: Optional[Model] = None,
                  scale: str = "coefficient") -> pd.Series:
     """Estimated main effects of a screening design.
 
+    Fits a main-effects model (no intercept by default) and returns one magnitude
+    per term. The relative ordering is identical under both scales, so
+    half-normal screening is unchanged.
+
+    Formulas
+    --------
+    - **Coefficient scale:** ``beta_j`` from ``y ~ sum_j beta_j x_j`` (no intercept).
+    - **Effect scale (Montgomery):** ``E_j = mean(y | x_j = +1) - mean(y | x_j = -1)``.
+      For an orthogonal factor coded ``+/-1``, ``E_j = 2 * beta_j``.
+
     Parameters
     ----------
     design : Design
@@ -29,14 +39,10 @@ def main_effects(design: Design, response, model: Optional[Model] = None,
     model : Model, optional
         Model to fit; a main-effects model (no intercept) is used if omitted.
     scale : {"coefficient", "effect"}, default "coefficient"
-        Magnitude convention (the relative *ordering* is the same either way, so
-        significance detection is unchanged):
+        Magnitude convention:
 
         - ``"coefficient"``: the regression coefficients ``beta``.
-        - ``"effect"``: the **classical DoE effect** (Montgomery), defined as
-          ``mean(+1) - mean(-1)``. For an orthogonal factor in ``+/-1`` this
-          equals ``2*beta``. This is the magnitude the screening literature plots
-          in the half-normal plot.
+        - ``"effect"``: the classical DoE effect (see Formulas).
 
     Returns
     -------
@@ -47,6 +53,15 @@ def main_effects(design: Design, response, model: Optional[Model] = None,
     ------
     ValueError
         If ``scale`` is neither ``"coefficient"`` nor ``"effect"``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> pb = ed.plackett_burman(5)
+    >>> y = 2 * pb.matrix["factor1"]
+    >>> eff = ed.main_effects(pb, y, scale="effect")
+    >>> eff["factor1"] > eff.drop("factor1").abs().max()
+    True
     """
     if model is None:
         frame = _factor_frame(design)
@@ -64,6 +79,17 @@ def main_effects(design: Design, response, model: Optional[Model] = None,
 def half_normal_data(effects, labels: Optional[Sequence[str]] = None):
     """Half-normal quantiles vs. effect magnitude, sorted.
 
+    Builds the data for a Daniel half-normal plot: inactive effects fall on a
+    straight line through the origin; active effects depart upward.
+
+    Formulas
+    --------
+    For rank ``k = 1..m`` (sorted by ``|effect|``):
+
+    ``q_k = Phi^-1(0.5 + 0.5 * (k - 0.5) / m)``
+
+    where ``Phi`` is the standard normal CDF.
+
     Parameters
     ----------
     effects : array-like
@@ -76,6 +102,13 @@ def half_normal_data(effects, labels: Optional[Sequence[str]] = None):
     DataFrame
         Columns ``label``, ``abs_effect`` and ``half_normal_quantile``, ready to
         plot (see :mod:`doekit.presentation.render.figures_mpl`).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hnd = ed.half_normal_data([0.1, -5.0, 0.3], ["a", "b", "c"])
+    >>> hnd.iloc[-1]["label"]
+    'b'
     """
     eff = np.asarray(effects, dtype=float)
     if labels is None:

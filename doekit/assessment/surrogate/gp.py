@@ -39,7 +39,18 @@ def _require_sklearn_gp():
 
 
 class GPSurrogate:
-    """GP surrogate over the OLS residual (interpretable trend + calibrated sigma)."""
+    """GP surrogate over the OLS residual (interpretable trend + calibrated sigma).
+
+    The prior mean is the OLS polynomial surface; a GP models the residual with
+    ``ConstantKernel * RBF + WhiteKernel``. Total predictive uncertainty combines
+    trend leverage, GP posterior variance and observation noise.
+
+    Formulas
+    --------
+    - **Mean:** ``mu(x) = mu_OLS(x) + mu_GP(x)`` on encoded features ``z(x)``.
+    - **Variance:** ``Var(y|x) = Var_OLS(mu(x)) + Var_GP(r|z) + noise``;
+      ``std = sqrt(Var)``.
+    """
 
     def __init__(self, ols: OLSSurrogate, gpr, feat_mean: np.ndarray,
                  feat_scale: np.ndarray, factors: list, factor_names: list,
@@ -69,6 +80,15 @@ class GPSurrogate:
             seed: Optional[int] = None) -> "GPSurrogate":
         """Fit a GP surrogate with an OLS (or constant) prior mean.
 
+        Fits :class:`OLSSurrogate` for the trend, then a GP on the residual
+        ``y - trend`` in encoded feature space.
+
+        Formulas
+        --------
+        Residual GP: ``r ~ GP(0, k)`` with
+        ``k = sigma_f^2 * RBF(length_scale) + WhiteKernel(noise)``.
+        Hyper-parameters are optimized by marginal likelihood (with restarts).
+
         Parameters
         ----------
         design, y
@@ -85,6 +105,17 @@ class GPSurrogate:
             Jitter added to the kernel diagonal for numerical stability.
         seed : int, optional
             RNG seed for the optimizer restarts.
+
+        Returns
+        -------
+        GPSurrogate
+
+        Raises
+        ------
+        ValueError
+            If ``y`` length does not match the design rows.
+        ImportError
+            If scikit-learn is not installed (``pip install "doekit[bo]"``).
         """
         GaussianProcessRegressor, ConstantKernel, RBF, WhiteKernel = _require_sklearn_gp()
         model, factors, frame = resolve_surrogate_model(design, model, factors)
@@ -144,10 +175,24 @@ class GPSurrogate:
     def predict(self, X_new) -> Tuple[np.ndarray, np.ndarray]:
         """Return ``(mean, std)`` = OLS trend + GP residual, with total sigma.
 
-        Predictive variance combines three honest sources: the OLS trend's
-        estimation SE (grows away from the data via leverage), the GP residual
-        posterior variance, and the observation noise. Treating the estimated
-        trend as fixed would understate uncertainty and mis-calibrate sigma(x).
+        Predictive variance combines three sources: OLS trend estimation SE
+        (leverage), GP residual posterior variance, and observation noise.
+        Treating the estimated trend as fixed would understate uncertainty.
+
+        Formulas
+        --------
+        ``mu = mu_OLS + mu_GP``,
+        ``std = sqrt(std_OLS^2 + std_GP^2 + noise)``.
+
+        Parameters
+        ----------
+        X_new : Design, DataFrame or array-like
+            Points to predict at.
+
+        Returns
+        -------
+        mean, std : ndarray
+            Length ``n_rows`` each.
         """
         frame = as_factor_frame(X_new, self.factor_names)
         trend, trend_std = self._ols.predict(frame)

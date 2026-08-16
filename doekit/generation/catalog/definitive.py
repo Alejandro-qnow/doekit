@@ -81,7 +81,18 @@ def _next_conference_order(min_order: int) -> tuple[int, np.ndarray]:
 
 def definitive_screening(factors, extra_center: int = 0,
                          model: Optional[Model] = None) -> Design:
-    """Definitive Screening Design for the given factors.
+    """Build a Definitive Screening Design (DSD) for the given factors.
+
+    In ``2*m+1`` runs (for ``m`` factors) estimates main effects free of
+    two-factor interactions and curvature, supports quadratic terms, and
+    projects onto active-factor RSM without extra runs (Jones & Nachtsheim,
+    2011).
+
+    Formulas
+    --------
+    From conference matrix ``C`` (zero diagonal, ``C^T C = (m-1) I``):
+
+    ``DSD = [C; -C; 0]`` stacked vertically.
 
     Parameters
     ----------
@@ -98,16 +109,22 @@ def definitive_screening(factors, extra_center: int = 0,
     Returns
     -------
     Design
-        The DSD in ``2*m0+1`` runs, where ``m0`` is the smallest constructible
-        conference order ``>= m``. When ``m0 > m`` the surplus columns are dropped
-        (equivalent to using "phantom" factors, which further reduces estimate
-        bias, as recommended by Jones & Nachtsheim). ``metadata`` carries
-        ``conference_order``, ``n_center`` and ``phantom_factors``.
+        DSD in ``2*m0+1`` runs, where ``m0`` is the smallest constructible
+        conference order ``>= m``. When ``m0 > m`` surplus columns are dropped
+        (phantom factors). ``metadata`` carries ``conference_order``,
+        ``n_center`` and ``phantom_factors``.
 
     Raises
     ------
     ValueError
         If fewer than 2 factors are given.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.definitive_screening(4)
+    >>> d.n_factors
+    4
     """
     names, facs = _resolve_factors(factors)
     m = len(names)

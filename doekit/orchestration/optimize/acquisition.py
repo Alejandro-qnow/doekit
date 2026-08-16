@@ -25,7 +25,20 @@ def _signed_mean(mean: np.ndarray, goal: str) -> np.ndarray:
 
 def expected_improvement(mean, std, best: float, goal: str = "max",
                          xi: float = 0.0) -> np.ndarray:
-    """Expected improvement over ``best`` (>= 0 everywhere).
+    """Expected improvement over the best observed value (non-negative).
+
+    Scores each candidate by the expected gain over ``best`` under a Gaussian
+    surrogate predictive distribution. Larger values favour points with high
+    mean and/or high uncertainty.
+
+    Formulas
+    --------
+    In maximization space with ``imp = mean - best - xi`` and standard normal
+    ``z = imp / std`` (when ``std > 0``):
+
+    - ``EI = imp * Phi(z) + std * phi(z)`` where ``Phi`` / ``phi`` are the
+      normal CDF and PDF.
+    - When ``std == 0``, ``EI = max(imp, 0)``.
 
     Parameters
     ----------
@@ -36,7 +49,20 @@ def expected_improvement(mean, std, best: float, goal: str = "max",
     goal : {"max", "min"}, default "max"
         Optimization direction.
     xi : float, default 0.0
-        Exploration margin; larger favours exploration.
+        Exploration margin; larger values favour exploration.
+
+    Returns
+    -------
+    ndarray
+        Expected improvement per candidate (>= 0).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import numpy as np
+    >>> ei = ed.expected_improvement([1.5, 0.5], [0.2, 0.1], best=1.0, goal="max")
+    >>> float(ei[0]) > float(ei[1])
+    True
     """
     m = _signed_mean(mean, goal)
     best_m = -best if str(goal).lower() == "min" else best
@@ -53,7 +79,38 @@ def expected_improvement(mean, std, best: float, goal: str = "max",
 
 def probability_of_improvement(mean, std, best: float, goal: str = "max",
                                xi: float = 0.0) -> np.ndarray:
-    """Probability that a candidate improves over ``best`` (in ``[0, 1]``)."""
+    """Probability that a candidate improves over ``best``.
+
+    Formulas
+    --------
+    With ``imp = mean - best - xi`` in maximization space:
+
+    - ``PI = Phi(imp / std)`` when ``std > 0``.
+    - ``PI = 1`` when ``imp > 0`` and ``std == 0``, else ``0``.
+
+    Parameters
+    ----------
+    mean, std : array-like
+        Surrogate predictive mean and standard deviation per candidate.
+    best : float
+        Best objective observed so far (original units).
+    goal : {"max", "min"}, default "max"
+        Optimization direction.
+    xi : float, default 0.0
+        Exploration margin.
+
+    Returns
+    -------
+    ndarray
+        Probability of improvement per candidate in ``[0, 1]``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> pi = ed.probability_of_improvement([1.2], [0.3], best=1.0, goal="max")
+    >>> 0.0 <= float(pi[0]) <= 1.0
+    True
+    """
     m = _signed_mean(mean, goal)
     best_m = -best if str(goal).lower() == "min" else best
     std = np.asarray(std, dtype=float)
@@ -66,7 +123,36 @@ def probability_of_improvement(mean, std, best: float, goal: str = "max",
 
 def upper_confidence_bound(mean, std, kappa: float = 2.0,
                            goal: str = "max") -> np.ndarray:
-    """Confidence-bound acquisition ``mean + kappa*std`` (max) — larger is better."""
+    """Upper (or lower) confidence-bound acquisition — larger is better.
+
+    Formulas
+    --------
+    In maximization space: ``UCB = mean + kappa * std``.
+
+    For ``goal="min"``, ``mean`` is negated first so the bound still rewards
+    high scores.
+
+    Parameters
+    ----------
+    mean, std : array-like
+        Surrogate predictive mean and standard deviation per candidate.
+    kappa : float, default 2.0
+        Exploration weight on the predictive standard deviation.
+    goal : {"max", "min"}, default "max"
+        Optimization direction.
+
+    Returns
+    -------
+    ndarray
+        Confidence-bound score per candidate.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ucb = ed.upper_confidence_bound([0.5, 0.5], [0.1, 0.3], kappa=2.0)
+    >>> float(ucb[1]) > float(ucb[0])
+    True
+    """
     m = _signed_mean(mean, goal)
     std = np.asarray(std, dtype=float)
     return m + float(kappa) * std
@@ -78,6 +164,19 @@ def expected_hypervolume_improvement(means, stds, front, ref=None,
                                      n_samples: int = 128,
                                      seed: Optional[int] = None) -> np.ndarray:
     """Monte-Carlo Expected Hypervolume Improvement for multi-objective candidates.
+
+    Estimates how much the Pareto hypervolume would increase if each candidate
+    were observed, by sampling from the surrogate predictive distribution.
+
+    Formulas
+    --------
+    For candidate ``i`` with predictive ``N(mean_i, std_i)`` per objective:
+
+    - Draw ``S`` samples ``y_s ~ N(mean_i, std_i)``.
+    - ``EHVI_i = mean_s max(0, HV(front union {y_s}, ref) - HV(front, ref))``.
+
+    All objectives are converted to maximization space before hypervolume
+    computation.
 
     Parameters
     ----------
@@ -95,12 +194,24 @@ def expected_hypervolume_improvement(means, stds, front, ref=None,
     n_samples : int, default 128
         Monte-Carlo samples per candidate.
     seed : int, optional
-        RNG seed (deterministic EHVI).
+        RNG seed for reproducible EHVI.
 
     Returns
     -------
     ndarray, shape (q,)
         EHVI per candidate (>= 0).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import numpy as np
+    >>> front = np.array([[1.0, 2.0], [2.0, 1.0]])
+    >>> means = np.array([[1.5, 1.5], [0.5, 0.5]])
+    >>> stds = np.array([[0.1, 0.1], [0.1, 0.1]])
+    >>> ehvi = ed.expected_hypervolume_improvement(
+    ...     means, stds, front, seed=0, n_samples=64)
+    >>> len(ehvi) == 2 and float(ehvi.max()) >= 0
+    True
     """
     means = np.atleast_2d(np.asarray(means, dtype=float))
     stds = np.atleast_2d(np.asarray(stds, dtype=float))
@@ -141,7 +252,31 @@ _ACQUISITIONS = {
 
 
 def get_acquisition(name: str):
-    """Look up an acquisition function by short or long name."""
+    """Look up an acquisition function by short or long name.
+
+    Parameters
+    ----------
+    name : str
+        Short or long alias (e.g. ``"ei"``, ``"expected_improvement"``,
+        ``"ucb"``, ``"ehvi"``).
+
+    Returns
+    -------
+    callable
+        The corresponding acquisition function.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` is not a registered alias.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> fn = ed.get_acquisition("ei")
+    >>> fn.__name__ == "expected_improvement"
+    True
+    """
     key = str(name).strip().lower()
     if key not in _ACQUISITIONS:
         raise ValueError(

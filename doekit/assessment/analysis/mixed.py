@@ -27,6 +27,19 @@ def fit_mixed_model(design: Design, response, groups,
                     reml: Optional[bool] = None) -> MixedFitResult:
     """Fit a linear mixed model (random intercept / slopes via MixedLM).
 
+    Fixed effects are fit on the same resolved model matrix as OLS; a grouping
+    factor introduces random intercepts (or slopes via ``re_formula``). Typical
+    use: batch, whole-plot, or hard-to-change factors in split-plot designs.
+    Wald z-tests and p-values are reported for fixed effects.
+
+    Formulas
+    --------
+    - **Model:** ``y = X @ beta + Z @ u + epsilon`` with random effects
+      ``u ~ N(0, G)`` and ``epsilon ~ N(0, sigma2 I)``.
+    - **REML:** maximize the restricted likelihood (variance components + fixed
+      effects given those variances); **ML** uses the full likelihood instead.
+    - **Wald test:** ``z = beta_j / SE(beta_j)``, two-sided normal p-value.
+
     Parameters
     ----------
     design : Design
@@ -54,6 +67,15 @@ def fit_mixed_model(design: Design, response, groups,
     ------
     ValueError
         If groups are invalid (fewer than 2 levels, length mismatch, etc.).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.attach_blocks(ed.plackett_burman(4), [0, 0, 0, 0, 1, 1, 1, 1])
+    >>> y = d.matrix["factor1"] + 0.5 * d.matrix["block"]
+    >>> fit = ed.fit_mixed_model(d, y, groups="block")
+    >>> fit.n_groups == 2 and fit.method == "reml"
+    True
     """
     if isinstance(groups, str):
         if groups not in design.matrix.columns:

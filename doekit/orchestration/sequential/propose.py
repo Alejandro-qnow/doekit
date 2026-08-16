@@ -186,6 +186,24 @@ def augment_design(design: Design, n_add: int, model: Optional[Model] = None,
         Combined design (original rows + new rows). Metadata includes
         ``n_original``, ``n_added``, ``added_rows`` (relative to candidates) and
         ``criterion``.
+
+    Raises
+    ------
+    ValueError
+        If ``n_add < 1`` or a candidate column is missing.
+
+    Notes
+    -----
+    Current runs are fixed; only new rows are optimized. Uses greedy growth
+    plus exchange refinement over multiple random starts.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.plackett_burman(6)
+    >>> aug = ed.augment_design(d, n_add=2, seed=0)
+    >>> aug.n_runs == d.n_runs + 2
+    True
     """
     if n_add < 1:
         raise ValueError("n_add must be >= 1")
@@ -245,6 +263,16 @@ class DesignComparison:
         Heuristic: True if B gains precision/prediction enough to justify extra runs.
     summary : str
         One-line human verdict.
+    table : DataFrame
+        Metric comparison table.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> a, b = ed.plackett_burman(6), ed.augment_design(ed.plackett_burman(6), n_add=2, seed=0)
+    >>> cmp = ed.compare_designs(a, b, seed=0)
+    >>> "D_efficiency" in cmp.delta
+    True
     """
 
     a_label: str
@@ -299,6 +327,21 @@ def compare_designs(a: Design, b: Design, model: Optional[Model] = None,
     Returns
     -------
     DesignComparison
+        Side-by-side metrics, deltas, and ``worth_it`` heuristic.
+
+    Notes
+    -----
+    ``worth_it`` is True when D or G rises >= 5 pts, mean SPV drops >= 10%,
+    or mean power rises >= 0.05 — scaled by extra run cost.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> cur = ed.plackett_burman(6)
+    >>> prop = ed.augment_design(cur, n_add=2, seed=0)
+    >>> cmp = ed.compare_designs(cur, prop, seed=0)
+    >>> cmp.b["n_runs"] > cmp.a["n_runs"]
+    True
     """
     model = model or a.model or b.model or _resolve_model(a, None)
     ea = efficiencies(a, model=model, n_region=n_region, seed=seed)
@@ -379,7 +422,7 @@ class NextRunsProposal:
     comparison : DesignComparison
         Metric delta current vs combined.
     criterion : str
-        Criterion used for augmentation.
+        Criterion used for augmentation (learn intent).
     rationale : str
         Human-readable justification.
     caveats : list of str
@@ -388,6 +431,32 @@ class NextRunsProposal:
         Terms flagged as active when ``response`` was provided (empty otherwise).
     sigma_hat : float or None
         Residual sigma from the fit when ``response`` was provided.
+    intent : str
+        ``"learn"`` or ``"optimize"``.
+    acquisition : str, optional
+        Acquisition function name (optimize intent).
+    best_so_far : object, optional
+        Best observed objective value(s).
+    predicted_improvement : float, optional
+        Top acquisition score for the first selected candidate.
+    pareto_front : list, optional
+        Pareto front snapshot (multi-objective optimize).
+    explore_exploit : dict, optional
+        Explore/exploit stance for optimize intent.
+    surrogate : Surrogate, optional
+        Fitted surrogate (optimize intent only).
+    acquisition_values : ndarray, optional
+        Acquisition scores over the candidate pool (optimize intent).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import numpy as np
+    >>> pb = ed.plackett_burman(6)
+    >>> y = np.random.default_rng(0).normal(size=pb.n_runs)
+    >>> prop = ed.propose_next_runs(pb, response=y, n_add=2, seed=0)
+    >>> prop.added.n_runs == 2
+    True
     """
 
     added: Design
@@ -545,6 +614,27 @@ def propose_next_runs(design: Design, response=None, n_add: int = 4,
     Returns
     -------
     NextRunsProposal
+        Proposed runs, combined design, comparison, and intent-specific fields.
+
+    Raises
+    ------
+    ValueError
+        For unknown ``intent``, exhausted ``budget``, or response length mismatch.
+
+    Notes
+    -----
+    ``intent="learn"`` uses classical D/I-optimal augmentation; ``intent="optimize"``
+    fits a surrogate and selects runs by acquisition (EI/UCB/PI/EHVI).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import numpy as np
+    >>> d = ed.plackett_burman(6)
+    >>> y = np.random.default_rng(0).normal(size=d.n_runs)
+    >>> prop = ed.propose_next_runs(d, response=y, n_add=2, seed=0)
+    >>> prop.combined.n_runs == d.n_runs + 2
+    True
     """
     _ = priorities  # API placeholder for multi-objective next-batch ranking
     intent = str(intent).strip().lower()

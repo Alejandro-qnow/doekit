@@ -1,0 +1,91 @@
+# MCP server
+
+The **MCP surface for agents**: the same DoE engine people use, exposed as tools an
+LLM agent can call over the [Model Context Protocol](https://modelcontextprotocol.io).
+It is the agent-facing side of doekit's reasoning flow — *recommend → evaluate →
+propose → decide* — built entirely from doekit's own results (`to_dict()` /
+`interpret` / `decide`). **Nothing is invented: facts from doekit, judgment from
+the agent.**
+
+The MCP server is the counterpart of the [experiment-designer skill](index.md): the
+skill is the *brain* (process, gates, when to pause for the lab); the server is the
+*arm* (the deterministic calls).
+
+## Install & run
+
+```bash
+pip install "doekit[mcp]"      # fastmcp; add ,bo for the real GP surrogate
+python -m doekit.adapters.mcp  # stdio transport
+```
+
+The repo ships a ready `.mcp.json` (Claude Code / Cursor):
+
+```json
+{
+  "mcpServers": {
+    "doekit": { "command": "python", "args": ["-m", "doekit.adapters.mcp"] }
+  }
+}
+```
+
+`import doekit` never requires fastmcp — the adapter imports it lazily, only when
+the server is built.
+
+## Tools
+
+Three agent-facing tools cover the core loop. Every response includes a
+`context_addition` string (facts + warnings + next step) ready to drop into the
+agent's context, plus the full `interpretation` (`doekit.Interpretation/1`).
+
+| Tool | Minimum input | Returns (keys) |
+|------|---------------|----------------|
+| `recommend` | `goal` (`screening`/`optimization`), `factors` `{name:[low,high]}`, `budget` | `method`, `n_runs`, `rationale`, `caveats`, `interpretation`, `context_addition` |
+| `evaluate` | `design_type` (`central_composite`/`box_behnken`), `factors` | `efficiencies` (D/A/G, SPV), `interpretation`, `context_addition` |
+| `propose_and_decide` | `design_type`, `factors`, `response` (length = `n_runs`) | `proposed_runs`, `decision`, `diagnostics`, `interpretation`, `calibration` (optimize), `convergence` (with `history`), `context_addition` |
+
+`propose_and_decide` reflects the **full agentic layer** — *interpret* + *decide*
+(stop/augment/refine/redesign) + *monitor*: per-step `diagnostics` (power, G-eff,
+budget, uncertainty) always, and a convergence stop gate when a per-generation
+`history` is supplied. In `intent="optimize"` it fits a surrogate (GP with
+`doekit[bo]`, else OLS) and returns its **LOO `calibration`** so the agent can vet
+`σ(x)` before trusting `best_so_far`.
+
+## End-to-end example (the reasoning flow, agent side)
+
+```jsonc
+// 1) recommend
+{ "goal": "optimization",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]}, "budget": 20 }
+// -> method="Box-Behnken", n_runs=15, + interpretation.context_addition
+
+// 2) evaluate  -> efficiencies (D/A/G, SPV)
+{ "design_type": "box_behnken",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]} }
+
+// 3) propose_and_decide (optimize, with history -> convergence gate)
+{ "design_type": "box_behnken",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]},
+  "response": [62,71,68,74,59,70,65,78,66,73,69,80,82,81,83],
+  "intent": "optimize", "acquisition": "ei", "budget": 20,
+  "history": [80.0, 82.0, 82.8, 83.0] }
+// -> decision.action, diagnostics{issues,has_blockers},
+//    calibration{kind:"GPSurrogate", coverage LOO}, convergence{should_stop}
+```
+
+## Scope & limits
+
+The in-tree adapter is intentionally minimal (agent-native core, not the whole
+catalog). Today it covers **RSM designs** (`central_composite` / `box_behnken`),
+continuous factors given as `[low, high]`, and a single response. Screening /
+factorial / optimal / mixture designs, the lab loop (`ingest` / `fit` / `report` /
+`export`) and multi-objective (`goals`/EHVI) are on the roadmap — see the
+[API cheat sheet](reference.md) for the full library surface an agent can reach
+directly.
+
+## Rules the agent must keep
+
+1. Never invent efficiencies, rankings, or lab responses — read `to_dict()` /
+   `context_addition`.
+2. Always `evaluate` before declaring a plan fit for the lab.
+3. In `optimize`, read `calibration` before trusting `best_so_far`.
+4. Argue "N more runs?" only from `comparison` / `decision` deltas.

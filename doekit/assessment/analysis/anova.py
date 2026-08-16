@@ -18,9 +18,15 @@ from .results import FitResult
 def anova_table(fit: FitResult, typ: Union[int, str] = 2) -> pd.DataFrame:
     """Partial-F (Wald) ANOVA table for an OLS :class:`FitResult`.
 
-    For single-degree-of-freedom terms (the usual coded DoE case) the partial
-    F equals ``t^2`` and matches Type III tests. Multi-df categorical blocks
+    For single-degree-of-freedom terms (the usual coded DoE case) each row is a
+    partial F-test of that term given all others. Multi-df categorical blocks
     appear as separate dummy rows (``block[...]``).
+
+    Formulas
+    --------
+    - **Single-df term:** ``F_j = t_j^2`` where ``t_j`` is the OLS t-statistic
+      (equivalent to a Type III partial F when terms are orthogonal).
+    - **p-value:** ``P(F_{1, dof} > F_j)`` from the residual dof of the fit.
 
     Parameters
     ----------
@@ -35,6 +41,15 @@ def anova_table(fit: FitResult, typ: Union[int, str] = 2) -> pd.DataFrame:
     -------
     DataFrame
         Columns ``term``, ``df``, ``F``, ``p_value`` (plus residual row).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> pb = ed.plackett_burman(5)
+    >>> y = 3 * pb.matrix["factor1"]
+    >>> anova = ed.anova_table(ed.fit_linear_model(pb, y))
+    >>> "factor1" in anova["term"].values
+    True
     """
     # Prefer statsmodels formula ANOVA when available
     res = fit._sm_result

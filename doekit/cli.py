@@ -1,4 +1,9 @@
-"""Minimal CLI: ``doekit recommend|evaluate|experiment|project``."""
+"""Minimal CLI for doekit design, evaluation, and project workflows.
+
+Subcommands: ``recommend``, ``evaluate``, ``experiment``, and ``project``
+(``init``, ``sync``, ``conclude``). Invoke via ``python -m doekit.cli`` or the
+``doekit`` console script when installed.
+"""
 
 from __future__ import annotations
 
@@ -29,6 +34,14 @@ def _parse_factors(spec: str):
 
 
 def cmd_recommend(args):
+    """Run ``doekit recommend``: suggest a design method and optional CSV export.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        ``--factors``, ``--goal``, ``--budget``, ``--model-order``, ``--mixture``,
+        ``--hard-to-change``, ``--irregular``, ``--seed``, ``--export``, ``--json``.
+    """
     import doekit as ed
     factors = _parse_factors(args.factors)
     kwargs = {}
@@ -52,6 +65,13 @@ def cmd_recommend(args):
 
 
 def cmd_evaluate(args):
+    """Run ``doekit evaluate``: score a Design JSON file.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Positional ``design_json`` path; ``--n-region``, ``--seed``, ``--json``.
+    """
     import doekit as ed
     from doekit.domain.design import Design
     data = json.loads(Path(args.design_json).read_text(encoding="utf-8"))
@@ -64,6 +84,14 @@ def cmd_evaluate(args):
 
 
 def cmd_experiment(args):
+    """Run ``doekit experiment``: build and evaluate an Experiment from flags.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        ``--factors``, ``--goal``, ``--budget``, ``--responses``, ``--export``,
+        ``--n-region``, ``--seed``, ``--json``.
+    """
     import doekit as ed
     factors = _parse_factors(args.factors)
     responses = args.responses.split(",") if args.responses else ["y"]
@@ -106,6 +134,13 @@ def _load_experiment_for_project(args):
 
 
 def cmd_project_init(args):
+    """Run ``doekit project init``: create ``experiment_project_<slug>/``.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        ``--name``, ``--root``, ``--description``.
+    """
     import doekit as ed
     proj = ed.ExperimentProject.create(
         args.name, root=args.root, description=args.description or "",
@@ -115,6 +150,15 @@ def cmd_project_init(args):
 
 
 def cmd_project_sync(args):
+    """Run ``doekit project sync``: write or update a wave from an Experiment.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        ``--path`` (project or wave dir), ``--experiment-json`` or factor flags,
+        ``--goal``, ``--budget``, ``--responses``, ``--n-region``, ``--seed``,
+        ``--report``.
+    """
     import doekit as ed
     from doekit.presentation.workspace import Wave, open_project
     path = Path(args.path)
@@ -132,6 +176,13 @@ def cmd_project_sync(args):
 
 
 def cmd_project_conclude(args):
+    """Run ``doekit project conclude``: write automatic conclusions for a wave.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        ``--path`` (wave dir), ``--lang``, ``--report``, ``--json``.
+    """
     import doekit as ed
     from doekit.presentation.workspace import Wave
     path = Path(args.path)
@@ -154,6 +205,24 @@ def cmd_project_conclude(args):
 
 
 def main(argv=None) -> int:
+    """Parse CLI arguments and dispatch to the selected subcommand.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Argument vector; defaults to ``sys.argv[1:]``.
+
+    Returns
+    -------
+    int
+        Exit code (0 on success).
+
+    Notes
+    -----
+    Subcommands: ``recommend``, ``evaluate``, ``experiment``, ``project init``,
+    ``project sync``, ``project conclude``. Use ``--help`` on any subcommand
+    for flag details.
+    """
     p = argparse.ArgumentParser(prog="doekit", description="doekit DoE CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
 

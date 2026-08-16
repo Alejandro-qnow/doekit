@@ -59,7 +59,15 @@ def _lattice_points(q: int, degree: int) -> np.ndarray:
 
 def simplex_lattice(factors, degree: int = 2,
                     model: Optional[Model] = None) -> Design:
-    """{q, m}-simplex lattice design (Scheffé).
+    """Build a ``{q, m}``-simplex lattice design (Scheffé).
+
+    Places runs at lattice points where each proportion is a multiple of
+    ``1/m`` on the ``(q-1)``-simplex. Lower bounds on components shift the
+    lattice within the feasible simplex.
+
+    Formulas
+    --------
+    Lattice points: ``x_i = k_i / m`` with ``k_i >= 0`` and ``sum_i k_i = m``.
 
     Parameters
     ----------
@@ -73,7 +81,21 @@ def simplex_lattice(factors, degree: int = 2,
     Returns
     -------
     Design
-        Rows are proportions summing to 1.
+        Rows are proportions summing to 1; metadata ``kind='SimplexLattice'``.
+
+    Raises
+    ------
+    ValueError
+        When ``degree < 1`` or lower bounds sum to more than 1.
+    InapplicableDesign
+        When fewer than two mixture components.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.simplex_lattice(3, degree=2)
+    >>> d.n_runs > 0 and abs(d.matrix.sum(axis=1) - 1.0).max() < 1e-9
+    True
     """
     if degree < 1:
         raise ValueError("degree must be >= 1")
@@ -106,10 +128,39 @@ def simplex_lattice(factors, degree: int = 2,
 
 
 def simplex_centroid(factors, model: Optional[Model] = None) -> Design:
-    """Simplex-centroid design: pure blends, binaries, …, overall centroid.
+    """Build a simplex-centroid design (pure blends through overall centroid).
 
-    For ``q`` components includes all points with equal proportions among any
-    non-empty subset (``2^q - 1`` runs).
+    For ``q`` components, includes every point with equal proportions among
+    any non-empty subset of components (``2^q - 1`` runs). Covers vertices,
+    edge midpoints, face centroids, and the overall centroid.
+
+    Formulas
+    --------
+    For subset ``S`` of size ``r``: ``x_i = 1/r`` if ``i in S``, else ``0``.
+
+    Parameters
+    ----------
+    factors : int, dict, or sequence of Factor
+        Mixture components (``q >= 2``).
+    model : Model, optional
+        Defaults to Scheffé quadratic.
+
+    Returns
+    -------
+    Design
+        Centroid design with proportions summing to 1 per row.
+
+    Raises
+    ------
+    InapplicableDesign
+        When fewer than two mixture components.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.simplex_centroid(3)
+    >>> d.n_runs == 2**3 - 1
+    True
     """
     facs = _as_mixture_factors(factors)
     names = [f.name for f in facs]

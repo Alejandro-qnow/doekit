@@ -57,11 +57,37 @@ def _as_response_frame(response, n_runs: int,
 
 def desirability_scores(frame: pd.DataFrame,
                         goals: Optional[Mapping[str, str]] = None) -> pd.Series:
-    """Simple per-run Derringer-style desirability (larger-the-better default).
+    """Compute per-run Derringer-style desirability across responses.
 
-    For each column, values are scaled to ``[0, 1]`` within the observed range
-    (maximize) or inverted (minimize). Overall desirability is the geometric
-    mean across responses.
+    For each response column, values are scaled to ``[0, 1]`` within the
+    observed range (maximize) or inverted (minimize). Overall desirability is
+    the geometric mean across responses.
+
+    Formulas
+    --------
+    - Per column ``j``: ``d_j = (x - min) / (max - min)`` (or ``1 - d_j`` for min goals).
+    - Overall: ``D = exp(mean(log(d_j)))`` (geometric mean).
+
+    Parameters
+    ----------
+    frame : DataFrame
+        Multi-response matrix (n_runs x k).
+    goals : mapping, optional
+        ``{column: "max"|"min"}``; defaults to maximize every column.
+
+    Returns
+    -------
+    Series
+        Overall desirability per run (name ``"desirability"``).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({"y1": [1.0, 2.0, 3.0], "y2": [3.0, 2.0, 1.0]})
+    >>> d = ed.desirability_scores(df)
+    >>> len(d) == 3 and float(d.max()) <= 1.0
+    True
     """
     if frame.empty:
         return pd.Series(dtype=float)
@@ -85,17 +111,42 @@ def desirability_scores(frame: pd.DataFrame,
 
 @dataclass
 class Experiment:
-    """End-to-end experiment handle: design → evaluate → ingest → next → report.
+    """End-to-end experiment handle: design through report and persistence.
 
-    Example::
+    Stateful aggregate composing recommend, evaluate, ingest, sequential propose,
+    decision, and export without embedding presentation side-effects in domain
+    functions.
 
-        exp = ed.experiment(goal="screening", factors=6, budget=12)
-        exp.evaluate()
-        print(exp.plan)                 # run sheet
-        exp.export_csv("runs.csv")
-        exp.ingest(y)
-        nxt = exp.next(n_add=4)
-        exp.report(output_dir="report/")
+    Attributes
+    ----------
+    design : Design
+        Current experimental design.
+    model : Model, optional
+        Fitted model specification.
+    response_names : list of str
+        Names of response columns.
+    responses : DataFrame, optional
+        Multi-column ingested responses.
+    evaluation : DesignEvaluation, optional
+        Cached design-quality evaluation.
+    fits : dict
+        Per-response :class:`~doekit.assessment.analysis.FitResult` objects.
+    recommendation : Recommendation, optional
+        Advisor result when built via :meth:`from_goal`.
+    metadata : dict
+        Goal, budget, and other experiment context.
+    response : ndarray, optional
+        Primary (first) response vector for sequential / report.
+    fit : FitResult, optional
+        Fit for the primary response.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> exp = ed.experiment(goal="screening", factors=4, budget=12)
+    >>> ev = exp.evaluate(seed=0)
+    >>> ev.d_efficiency > 0
+    True
     """
 
     design: Design
@@ -115,7 +166,35 @@ class Experiment:
                   model_order: Optional[str] = None,
                   responses: Optional[Sequence[str]] = None,
                   **kwargs) -> "Experiment":
-        """Build an experiment from :func:`recommend_design`."""
+        """Build an experiment from :func:`~doekit.recommend_design`.
+
+        Parameters
+        ----------
+        goal : str
+            ``"screening"`` or ``"optimization"``.
+        factors
+            Factor count or explicit factor specification.
+        budget : int, optional
+            Run budget passed to the advisor.
+        model_order : str, optional
+            Model order for the advisor.
+        responses : sequence of str, optional
+            Response column names (default ``["y"]``).
+        **kwargs
+            Forwarded to :func:`~doekit.recommend_design`.
+
+        Returns
+        -------
+        Experiment
+            Initialized with design, model, and recommendation metadata.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> exp = ed.Experiment.from_goal("screening", factors=3, budget=12, seed=0)
+        >>> exp.design.n_runs > 0
+        True
+        """
         rec = recommend_design(goal=goal, factors=factors, budget=budget,
                                model_order=model_order, **kwargs)
         names = list(responses) if responses else ["y"]
@@ -129,7 +208,29 @@ class Experiment:
     @classmethod
     def from_design(cls, design: Design, model: Optional[Model] = None,
                     responses: Optional[Sequence[str]] = None) -> "Experiment":
-        """Wrap an existing design."""
+        """Wrap an existing :class:`Design`.
+
+        Parameters
+        ----------
+        design : Design
+            Design to manage.
+        model : Model, optional
+            Model specification; taken from ``design.model`` if omitted.
+        responses : sequence of str, optional
+            Response column names (default ``["y"]``).
+
+        Returns
+        -------
+        Experiment
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> d = ed.plackett_burman(6)
+        >>> exp = ed.Experiment.from_design(d)
+        >>> exp.design.n_runs == d.n_runs
+        True
+        """
         names = list(responses) if responses else ["y"]
         return cls(design=design, model=model or design.model,
                    response_names=names,
@@ -142,12 +243,60 @@ class Experiment:
         return run_sheet(self.design, response_names=self.response_names)
 
     def evaluate(self, **kwargs) -> DesignEvaluation:
-        """Run quality evaluation and cache the result."""
+        """Run design-quality evaluation and cache the result.
+
+        Parameters
+        ----------
+        **kwargs
+            Forwarded to :func:`~doekit.evaluate` (``n_region``, ``seed``, etc.).
+
+        Returns
+        -------
+        DesignEvaluation
+            Cached on ``self.evaluation``.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> exp = ed.experiment(design=ed.plackett_burman(6))
+        >>> ev = exp.evaluate(n_region=500, seed=0)
+        >>> ev.n_runs == exp.design.n_runs
+        True
+        """
         self.evaluation = evaluate(self.design, model=self.model, **kwargs)
         return self.evaluation
 
     def ingest(self, response, *, fit: bool = True, **kwargs) -> "Experiment":
-        """Attach measured responses (1d, 2d, dict or DataFrame); optionally fit."""
+        """Attach measured responses and optionally fit the model.
+
+        Parameters
+        ----------
+        response : array-like, Mapping, or DataFrame
+            Measured responses (1d, 2d, dict, or DataFrame).
+        fit : bool, default True
+            When ``True``, fit a linear model per response column.
+        **kwargs
+            Forwarded to :func:`~doekit.fit_linear_model`.
+
+        Returns
+        -------
+        Experiment
+            ``self``, for chaining.
+
+        Raises
+        ------
+        ValueError
+            If response row count does not match ``design.n_runs``.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> import numpy as np
+        >>> exp = ed.experiment(design=ed.plackett_burman(6))
+        >>> exp.ingest(np.random.default_rng(0).normal(size=6))
+        >>> exp.response is not None
+        True
+        """
         frame = _as_response_frame(response, self.design.n_runs, self.response_names)
         self.responses = frame
         self.response_names = list(frame.columns)
@@ -165,16 +314,67 @@ class Experiment:
         return self
 
     def desirability(self, goals: Optional[Mapping[str, str]] = None) -> pd.Series:
-        """Overall desirability across ingested responses (requires multi-y)."""
+        """Overall desirability across ingested multi-response data.
+
+        Parameters
+        ----------
+        goals : mapping, optional
+            ``{column: "max"|"min"}`` per response.
+
+        Returns
+        -------
+        Series
+            Per-run desirability from :func:`desirability_scores`.
+
+        Raises
+        ------
+        ValueError
+            If :meth:`ingest` has not been called.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> import numpy as np
+        >>> exp = ed.experiment(design=ed.plackett_burman(6), responses=["y1", "y2"])
+        >>> exp.ingest(np.column_stack([
+        ...     np.random.default_rng(0).normal(size=6),
+        ...     np.random.default_rng(1).normal(size=6),
+        ... ]))
+        >>> len(exp.desirability()) == 6
+        True
+        """
         if self.responses is None:
             raise ValueError("call ingest(...) before desirability()")
         return desirability_scores(self.responses, goals=goals)
 
     def multi_response_summary(self, goals: Optional[Mapping[str, str]] = None) -> dict:
-        """Per-response fit quality + which response the design serves best.
+        """Summarize per-response fit quality and overall desirability.
 
-        Returns a dict with ``per_response`` (R², sigma) and a short ``note``
-        like \"strong on A / weak on B\" for the agent/report layer.
+        Parameters
+        ----------
+        goals : mapping, optional
+            Passed to :meth:`desirability` when multiple responses exist.
+
+        Returns
+        -------
+        dict
+            Keys ``per_response`` (R², sigma, dof per column), ``note`` (human
+            verdict on which response fits best), and optional ``desirability``
+            stats when multiple responses were ingested.
+
+        Raises
+        ------
+        ValueError
+            If :meth:`ingest` with ``fit=True`` has not been called.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> import numpy as np
+        >>> exp = ed.experiment(design=ed.plackett_burman(6))
+        >>> exp.ingest(np.random.default_rng(0).normal(size=6))
+        >>> "per_response" in exp.multi_response_summary()
+        True
         """
         if not self.fits:
             raise ValueError("call ingest(..., fit=True) first")
@@ -207,9 +407,37 @@ class Experiment:
              **kwargs) -> NextRunsProposal:
         """Propose the next batch of runs.
 
-        ``intent="learn"`` (default) augments for information using the primary
-        response; ``intent="optimize"`` fits a surrogate and proposes runs that
-        move the result, using **all** ingested responses for multi-objective.
+        ``intent="learn"`` augments for information using the primary response;
+        ``intent="optimize"`` fits a surrogate and proposes runs that move the
+        result (multi-objective when multiple responses were ingested).
+
+        Parameters
+        ----------
+        n_add : int, default 4
+            Number of new runs to propose.
+        intent : {"learn", "optimize"}, default "learn"
+            Information vs optimization intent.
+        **kwargs
+            Forwarded to :func:`~doekit.propose_next_runs`.
+
+        Returns
+        -------
+        NextRunsProposal
+
+        Raises
+        ------
+        ValueError
+            If :meth:`ingest` has not been called.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> import numpy as np
+        >>> exp = ed.experiment(design=ed.plackett_burman(6))
+        >>> exp.ingest(np.random.default_rng(0).normal(size=6))
+        >>> prop = exp.next(n_add=2, seed=0)
+        >>> prop.added.n_runs == 2
+        True
         """
         if self.response is None:
             raise ValueError("call ingest(y) before next()")
@@ -235,13 +463,40 @@ class Experiment:
 
         Parameters
         ----------
+        n_add : int, default 4
+            Runs to propose when ``proposal`` is omitted.
+        intent : {"learn", "optimize"}, default "learn"
+            Passed to :meth:`next`.
+        budget : int, optional
+            Total run budget; falls back to ``metadata["budget"]``.
+        risk_tolerance : {"low", "moderate", "high"}, default "moderate"
+            Decision policy sensitivity.
+        proposal : NextRunsProposal, optional
+            Precomputed proposal; :meth:`next` is called when omitted.
+        use_calibration : bool, default False
+            Use surrogate calibration for optimize uncertainty.
         history : iterable, optional
-            Per-generation values for :func:`~doekit.orchestration.decide.check_convergence`
+            Per-generation values for :func:`~doekit.check_convergence`
             (``best_so_far`` for optimize, a delta metric for learn).
+        scorer, policy
+            Custom :class:`~doekit.ContinuationScorer` / :class:`~doekit.DecisionPolicy`.
+        **kwargs
+            Forwarded to :meth:`next` when building the proposal.
 
         Returns
         -------
-        doekit.orchestration.decide.Decision
+        Decision
+            Recommended action with diagnostics in ``metadata["diagnostics"]``.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> import numpy as np
+        >>> exp = ed.experiment(goal="screening", factors=4, budget=16)
+        >>> exp.ingest(np.random.default_rng(0).normal(size=exp.design.n_runs))
+        >>> dec = exp.decide_next(n_add=2, seed=0)
+        >>> dec.action in ("augment", "refine", "stop", "redesign")
+        True
         """
         from ..decide import (  # noqa: PLC0415
             decide_next_action, context_from_proposal, check_convergence,
@@ -274,7 +529,28 @@ class Experiment:
         return decision
 
     def compare(self, n_add: int = 4, **kwargs) -> DesignComparison:
-        """Ask whether ``n_add`` more runs are worth it (via propose + compare)."""
+        """Ask whether ``n_add`` more runs are worth it.
+
+        Parameters
+        ----------
+        n_add : int, default 4
+            Proposed augmentation size.
+        **kwargs
+            Forwarded to :meth:`next` or :func:`~doekit.augment_design`.
+
+        Returns
+        -------
+        DesignComparison
+            Metric deltas and ``worth_it`` heuristic.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> exp = ed.experiment(design=ed.plackett_burman(6))
+        >>> cmp = exp.compare(n_add=2, seed=0)
+        >>> "delta" in cmp.to_dict()
+        True
+        """
         prop = self.next(n_add=n_add, **kwargs) if self.response is not None else None
         if prop is not None:
             return prop.comparison
@@ -283,23 +559,66 @@ class Experiment:
         return compare_designs(self.design, combined, model=self.model)
 
     def report(self, **kwargs) -> Any:
-        """Generate an HTML report via the presentation layer (explicit IO)."""
+        """Generate an HTML report via the presentation layer.
+
+        Parameters
+        ----------
+        **kwargs
+            Forwarded to :func:`~doekit.report`.
+
+        Returns
+        -------
+        Path or object
+            Report artifact from the presentation layer.
+        """
         from ...presentation.report import report_html  # noqa: PLC0415
         return report_html(self.design, response=self.response,
                            model=self.model, **kwargs)
 
     def export_csv(self, path: Union[str, Path], **kwargs) -> Path:
-        """Write the collection template as CSV."""
+        """Write the lab collection template as CSV.
+
+        Parameters
+        ----------
+        path : str or Path
+            Output file path.
+        **kwargs
+            Forwarded to :func:`~doekit.export_csv`.
+
+        Returns
+        -------
+        Path
+            Written file path.
+        """
         from ...presentation.export import export_csv  # noqa: PLC0415
         return export_csv(self.design, path, response_names=self.response_names, **kwargs)
 
     def export_excel(self, path: Union[str, Path], **kwargs) -> Path:
-        """Write the collection template as Excel (``doekit[export]``)."""
+        """Write the lab collection template as Excel (requires ``doekit[export]``).
+
+        Parameters
+        ----------
+        path : str or Path
+            Output file path.
+        **kwargs
+            Forwarded to :func:`~doekit.export_excel`.
+
+        Returns
+        -------
+        Path
+            Written file path.
+        """
         from ...presentation.export import export_excel  # noqa: PLC0415
         return export_excel(self.design, path, response_names=self.response_names, **kwargs)
 
     def to_dict(self) -> dict:
-        """JSON-safe snapshot (``schema: doekit.Experiment/1``)."""
+        """Serialize to a JSON-safe dict (``schema: doekit.Experiment/1``).
+
+        Returns
+        -------
+        dict
+            Snapshot including design, model, responses, evaluation, and fits.
+        """
         from ...shared.serialize import jsonify  # noqa: PLC0415
         multi = None
         if self.fits:
@@ -328,7 +647,22 @@ class Experiment:
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> "Experiment":
-        """Rebuild an :class:`Experiment` from :meth:`to_dict` output."""
+        """Rebuild an :class:`Experiment` from :meth:`to_dict` output.
+
+        Parameters
+        ----------
+        d : mapping
+            Serialized experiment snapshot.
+
+        Returns
+        -------
+        Experiment
+
+        Raises
+        ------
+        ValueError
+            For unsupported schema or missing design.
+        """
         if d.get("schema") not in (None, "doekit.Experiment/1"):
             raise ValueError(f"unsupported Experiment schema: {d.get('schema')!r}")
         if not d.get("design"):
@@ -383,11 +717,34 @@ class Experiment:
         comparison=None,
         next_runs=None,
     ) -> Any:
-        """Persist into a :class:`~doekit.presentation.workspace.Wave` or project.
+        """Persist the experiment into a workspace wave or project.
 
         ``target`` may be a :class:`~doekit.presentation.workspace.Wave`, an
         :class:`~doekit.presentation.workspace.ExperimentProject` (creates a new
         wave), or a filesystem path to either.
+
+        Parameters
+        ----------
+        target : Wave, ExperimentProject, str, or Path
+            Persistence destination.
+        thresholds : mapping, optional
+            Quality thresholds for the wave manifest.
+        seed : int, optional
+            RNG seed stored in wave metadata.
+        write_report : bool, default False
+            Generate an HTML report during sync.
+        comparison, next_runs
+            Optional artifacts to attach to the wave.
+
+        Returns
+        -------
+        Wave
+            Synced wave (or new wave when ``target`` is a project).
+
+        Raises
+        ------
+        FileNotFoundError
+            When ``target`` is neither a project nor a wave directory.
         """
         from ...presentation.workspace import (  # noqa: PLC0415
             ExperimentProject, Wave, open_project,
@@ -420,7 +777,22 @@ class Experiment:
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> "Experiment":
-        """Load from a wave directory or ``doe-configuration/experiment.json``."""
+        """Load an experiment from a wave directory or snapshot file.
+
+        Parameters
+        ----------
+        path : str or Path
+            Wave directory, project path, or ``experiment.json`` file.
+
+        Returns
+        -------
+        Experiment
+
+        Raises
+        ------
+        FileNotFoundError
+            When no experiment snapshot is found at ``path``.
+        """
         from ...presentation.workspace import Wave  # noqa: PLC0415
         path = Path(path)
         if path.is_file() and path.name == "experiment.json":
@@ -441,7 +813,26 @@ class Experiment:
         write_html: bool = False,
         comparison=None,
     ) -> dict:
-        """Write automatic conclusions into a wave (semantic handoff artifact)."""
+        """Write automatic conclusions into a wave (semantic handoff artifact).
+
+        Parameters
+        ----------
+        wave : Wave, str, or Path
+            Target wave directory.
+        thresholds : mapping, optional
+            Quality thresholds for conclusions.
+        lang : str, default "en"
+            Language for narrative text.
+        write_html : bool, default False
+            Emit an HTML conclusions page.
+        comparison : DesignComparison, optional
+            Comparison artifact to include.
+
+        Returns
+        -------
+        dict
+            Conclusions payload written by the wave.
+        """
         from ...presentation.workspace import Wave  # noqa: PLC0415
         if not isinstance(wave, Wave):
             wave = Wave(wave)
@@ -457,10 +848,43 @@ class Experiment:
 def experiment(goal: str = "screening", factors=None, budget: Optional[int] = None,
                design: Optional[Design] = None, model: Optional[Model] = None,
                responses: Optional[Sequence[str]] = None, **kwargs) -> Experiment:
-    """Factory: ``ed.experiment(...)`` → :class:`Experiment`.
+    """Factory: ``ed.experiment(...)`` returns an :class:`Experiment`.
 
     Pass ``design=`` to wrap an existing design, or ``goal`` + ``factors`` to
     run the advisor.
+
+    Parameters
+    ----------
+    goal : str, default "screening"
+        Advisor goal when building from factors.
+    factors
+        Factor count or specification (required unless ``design`` is given).
+    budget : int, optional
+        Run budget for the advisor.
+    design : Design, optional
+        Existing design to wrap.
+    model : Model, optional
+        Model specification.
+    responses : sequence of str, optional
+        Response column names.
+    **kwargs
+        Forwarded to :meth:`Experiment.from_goal`.
+
+    Returns
+    -------
+    Experiment
+
+    Raises
+    ------
+    ValueError
+        If neither ``factors`` nor ``design`` is provided.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> exp = ed.experiment(goal="screening", factors=4, budget=12, seed=0)
+    >>> exp.design.n_runs <= 12
+    True
     """
     if design is not None:
         return Experiment.from_design(design, model=model, responses=responses)

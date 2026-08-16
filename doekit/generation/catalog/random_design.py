@@ -20,7 +20,10 @@ from ...domain.design import Design
 
 def random_design(factors, n: int, seed: Optional[int] = None,
                   model: Optional[Model] = None) -> Design:
-    """Generate ``n`` random runs.
+    """Generate ``n`` random experimental runs.
+
+    Draws independently from ``scipy.stats`` distributions (dict spec) or
+    uniform/choice sampling over factor ranges and levels.
 
     Parameters
     ----------
@@ -38,7 +41,14 @@ def random_design(factors, n: int, seed: Optional[int] = None,
     Returns
     -------
     Design
-        The random design.
+        Random design with ``metadata['kind']='RandomDesign'``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.random_design(ed.as_factors(2), n=5, seed=0)
+    >>> d.n_runs
+    5
     """
     rng = np.random.default_rng(seed)
     columns: dict[str, np.ndarray] = {}
@@ -64,7 +74,10 @@ def random_design(factors, n: int, seed: Optional[int] = None,
 def latin_hypercube(factors, n: int, optimize: bool = False,
                     seed: Optional[int] = None,
                     model: Optional[Model] = None) -> Design:
-    """Latin Hypercube design.
+    """Build a Latin Hypercube design (space-filling sample).
+
+    Each factor is stratified into ``n`` equal-probability intervals with one
+    sample per interval. Optional discrepancy minimization improves coverage.
 
     Parameters
     ----------
@@ -84,7 +97,14 @@ def latin_hypercube(factors, n: int, optimize: bool = False,
     Returns
     -------
     Design
-        The Latin Hypercube design.
+        Latin Hypercube design with ``metadata['kind']='LatinHypercube'``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.latin_hypercube(3, n=10, seed=0)
+    >>> d.n_runs, d.n_factors
+    (10, 3)
     """
     if isinstance(factors, int):
         names = [f"factor{i + 1}" for i in range(factors)]

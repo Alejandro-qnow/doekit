@@ -5,12 +5,14 @@ Turns the transparent doekit pipeline — recommend → evaluate → propose
 call. Every tool returns plain JSON-safe dicts built from doekit's own results
 (``to_dict`` / ``interpret`` / ``decide``); nothing is invented.
 
-Requires ``pip install "doekit[mcp]"`` (fastmcp). The tool *logic* lives in plain
-functions (``tool_*``) that need no fastmcp, so it is unit-testable; only
-:func:`build_server` imports fastmcp to register them.
+Requires ``pip install "doekit[mcp]"`` (fastmcp). Tool logic lives in plain
+``tool_*`` functions (unit-testable without fastmcp); only :func:`build_server`
+imports fastmcp to register them.
 
-    from doekit.adapters.mcp import build_server
-    build_server().run()          # or: python -m doekit.adapters.mcp
+Notes
+-----
+Run locally with ``python -m doekit.adapters.mcp`` or
+``build_server().run()`` after installing ``doekit[mcp]``.
 """
 
 from __future__ import annotations
@@ -43,12 +45,7 @@ def _factor_dict(factors: dict) -> dict:
 
 
 def _surrogate_calibration(surrogate) -> Optional[dict]:
-    """LOO calibration summary for an optimize surrogate (None if unavailable).
-
-    Audits whether ``sigma(x)`` is trustworthy before an agent believes
-    ``best_so_far``. Guarded: learn proposals carry no surrogate, and OLS/GP
-    calibration can fail on degenerate data — never break the tool over it.
-    """
+    """Best-effort LOO calibration summary for an optimize surrogate."""
     if surrogate is None:
         return None
     try:
@@ -77,7 +74,40 @@ def _model_for(names, model_order: str):
 
 def tool_recommend(goal: str, factors: dict, budget: int,
                    model_order: str = "quadratic") -> dict:
-    """Recommend a design and return its interpretation."""
+    """Recommend a design and return JSON-safe interpretation.
+
+    Wraps :func:`doekit.recommend_design` and :func:`doekit.interpret` so an
+    MCP client receives plain dicts (no Design objects).
+
+    Parameters
+    ----------
+    goal : str
+        ``"screening"`` or ``"optimization"``.
+    factors : dict
+        ``{name: [low, high]}`` or ``{name: (low, high)}`` factor bounds.
+    budget : int
+        Maximum number of runs.
+    model_order : str, default ``"quadratic"``
+        ``"linear"``, ``"interactions"``, or ``"quadratic"``.
+
+    Returns
+    -------
+    dict
+        Keys ``method``, ``n_runs``, ``factor_names``, ``rationale``,
+        ``caveats``, ``interpretation`` (dict), ``context_addition`` (str).
+
+    Notes
+    -----
+    Registered on the FastMCP server by :func:`build_server`. Unit-testable
+    without fastmcp installed.
+
+    Examples
+    --------
+    >>> from doekit.adapters.mcp import tool_recommend
+    >>> out = tool_recommend("screening", {"A": [0, 1], "B": [0, 1]}, budget=8)
+    >>> "method" in out and "interpretation" in out
+    True
+    """
     rec = ed.recommend_design(goal=goal, factors=_factor_dict(factors),
                               budget=budget, model_order=model_order)
     view = ed.interpret(rec)
@@ -94,7 +124,28 @@ def tool_recommend(goal: str, factors: dict, budget: int,
 
 def tool_evaluate(design_type: str, factors: dict,
                   model_order: str = "quadratic") -> dict:
-    """Build a named design, evaluate it, and return its interpretation."""
+    """Build a named RSM design, evaluate it, and return interpretation.
+
+    Parameters
+    ----------
+    design_type : str
+        ``"central_composite"`` or ``"box_behnken"``.
+    factors : dict
+        ``{name: [low, high]}`` factor bounds.
+    model_order : str, default ``"quadratic"``
+        Model order for evaluation (see :func:`tool_recommend`).
+
+    Returns
+    -------
+    dict
+        Keys ``design_type``, ``n_runs``, ``efficiencies``, ``interpretation``,
+        ``context_addition``.
+
+    Raises
+    ------
+    ValueError
+        When ``design_type`` is not supported.
+    """
     fd = _factor_dict(factors)
     builders = {"central_composite": ed.central_composite,
                 "box_behnken": ed.box_behnken}
@@ -118,11 +169,48 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
                             intent: str = "learn", acquisition: Optional[str] = None,
                             budget: Optional[int] = None, seed: int = 0,
                             history: Optional[list] = None) -> dict:
-    """Propose the next wave (learn/optimize), interpret and decide the next action.
+    """Propose next runs (learn/optimize), interpret, and decide the next action.
 
-    ``history`` (per-generation ``best_so_far`` for optimize, a delta metric for
-    learn) enables the convergence stop gate. The decision always carries a
-    ``diagnostics`` report (power / G-eff / budget / uncertainty / convergence).
+    Fits on the current design plus ``response``, proposes ``n_add`` follow-up
+    runs, and returns a decision with step diagnostics. Optional ``history``
+    enables the convergence stop gate.
+
+    Parameters
+    ----------
+    design_type : str
+        ``"central_composite"`` or ``"box_behnken"``.
+    factors : dict
+        ``{name: [low, high]}`` factor bounds.
+    response : list
+        Response values aligned with design run order (length = ``n_runs``).
+    model_order : str, default ``"quadratic"``
+        Model order for proposal and evaluation.
+    n_add : int, default 4
+        Number of follow-up runs to propose.
+    intent : str, default ``"learn"``
+        ``"learn"`` (augment for model quality) or ``"optimize"`` (BO-style).
+    acquisition : str, optional
+        Acquisition function for ``intent="optimize"``.
+    budget : int, optional
+        Total run budget for decision context (0 when omitted).
+    seed : int, default 0
+        Random seed for proposal stochasticity.
+    history : list, optional
+        Per-iteration metric history for :func:`~doekit.check_convergence`
+        (``best_so_far`` for optimize, ``delta_D_efficiency`` for learn).
+
+    Returns
+    -------
+    dict
+        Keys ``intent``, ``n_added``, ``proposed_runs`` (list of row dicts),
+        ``interpretation``, ``decision``, ``diagnostics``, ``context_addition``;
+        optional ``convergence`` and ``calibration`` when applicable.
+
+    Raises
+    ------
+    ValueError
+        When ``design_type`` is unsupported or ``response`` length mismatches
+        ``n_runs``.
     """
     fd = _factor_dict(factors)
     builders = {"central_composite": ed.central_composite,
@@ -190,7 +278,35 @@ TOOLS = {
 # ---------------------------------------------------------------------------
 
 def build_server(name: str = "doekit"):
-    """Create a FastMCP server exposing the doekit tools (requires ``doekit[mcp]``)."""
+    """Create a FastMCP server exposing the doekit tools.
+
+    Registers :data:`TOOLS` (``recommend``, ``evaluate``, ``propose_and_decide``)
+    with fastmcp. Requires ``pip install "doekit[mcp]"``.
+
+    Parameters
+    ----------
+    name : str, default ``"doekit"``
+        MCP server name passed to FastMCP.
+
+    Returns
+    -------
+    FastMCP
+        Configured server; call ``.run()`` to start stdio transport.
+
+    Raises
+    ------
+    ImportError
+        When ``fastmcp`` is not installed.
+
+    Examples
+    --------
+    Install ``doekit[mcp]``, then from Python::
+
+        from doekit.adapters.mcp import build_server
+        build_server().run()
+
+    Or: ``python -m doekit.adapters.mcp``.
+    """
     FastMCP = _require_fastmcp()
     server = FastMCP(name)
     for tool_name, fn in TOOLS.items():
@@ -199,6 +315,7 @@ def build_server(name: str = "doekit"):
 
 
 def main() -> None:  # pragma: no cover - entrypoint
+    """Entry point for ``python -m doekit.adapters.mcp``."""
     build_server().run()
 
 

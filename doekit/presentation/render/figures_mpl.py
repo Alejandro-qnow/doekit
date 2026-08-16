@@ -28,6 +28,9 @@ def half_normal_plot(effects, labels: Optional[Sequence[str]] = None, ax=None,
                      annotate: bool = True):
     """Half-normal plot of effects: points off the line are significant.
 
+    Daniel plot for screening: inactive effects follow the half-normal reference;
+    departures indicate active factors.
+
     Parameters
     ----------
     effects : array-like
@@ -43,6 +46,13 @@ def half_normal_plot(effects, labels: Optional[Sequence[str]] = None, ax=None,
     -------
     matplotlib.axes.Axes
         The axes drawn on.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ax = ed.presentation.render.figures_mpl.half_normal_plot([0.1, 3.0, -0.2])
+    >>> ax.get_ylabel()
+    '|Effect|'
     """
     plt = _require_mpl()
     data = half_normal_data(effects, labels)
@@ -142,6 +152,11 @@ def fds_plot(design, model=None, ax=None, label=None, surrogate=None,
     predictive **standard deviation** ``sigma(x)`` over a region cover — the
     optimize-intent analogue of SPV (how uniform the surrogate's uncertainty is).
 
+    Formulas
+    --------
+    Design mode: ``SPV(x) = N * x'(X'X)^-1 x`` sorted over the region sample.
+    Surrogate mode: ``sigma(x)`` from ``surrogate.predict`` sorted likewise.
+
     Parameters
     ----------
     design : Design or DataFrame
@@ -167,6 +182,14 @@ def fds_plot(design, model=None, ax=None, label=None, surrogate=None,
     -------
     matplotlib.axes.Axes
         The axes drawn on.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ax = ed.presentation.render.figures_mpl.fds_plot(
+    ...     ed.full_factorial(3), seed=0)
+    >>> ax.get_xlabel()
+    'Fraction of design region'
     """
     plt = _require_mpl()
     import pandas as pd  # noqa: PLC0415
@@ -599,6 +622,14 @@ def power_plot(power, ax=None, alpha_ref: float = 0.8):
     -------
     matplotlib.axes.Axes
         The axes drawn on.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ev = ed.evaluate(ed.full_factorial(3), seed=0)
+    >>> ax = ed.presentation.render.figures_mpl.power_plot(ev.power)
+    >>> ax.get_xlabel()
+    'Power'
     """
     plt = _require_mpl()
     import pandas as pd  # noqa: PLC0415

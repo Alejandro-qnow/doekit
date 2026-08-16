@@ -104,6 +104,18 @@ def report_summary(design: Design, response=None, model: Optional[Model] = None,
 
     Parameters
     ----------
+    design : Design
+        Executed (or planned) design.
+    response : array-like, optional
+        Measured response; enables fit, ANOVA and anomaly sections.
+    model : Model, optional
+        Model for evaluation and fit; taken from the design if omitted.
+    effect_size, sigma, alpha : float
+        Passed to :func:`~doekit.assessment.evaluation.evaluate` (power analysis).
+    seed : int, optional
+        Seed for region sampling in the evaluation.
+    thresholds : dict, optional
+        Overrides for quality thresholds (``d_excellent``, ``d_ok``, etc.).
     lang : {"en", "es"}, default "en"
         Language of the methodology/summary/recommendations prose.
     blocks : str or array-like, optional
@@ -120,6 +132,15 @@ def report_summary(design: Design, response=None, model: Optional[Model] = None,
         ``recommendations``, ``anomalies``, ``recommendation``, and when a
         response is provided also ``fit``, ``anova``; ``mixed_fit`` when
         ``groups`` is set.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.plackett_burman(5)
+    >>> y = d.matrix["factor1"]
+    >>> summary = ed.report_summary(d, response=y, seed=0)
+    >>> "executive_summary" in summary and summary["fit"] is not None
+    True
     """
     from ..assessment.analysis import anova_table, fit_mixed_model  # noqa: PLC0415
 
@@ -161,7 +182,32 @@ def run_report_arg(design, response=None, model=None, report=None, **extra):
 
     ``report`` accepts ``None``/``False`` (do nothing), ``True`` (default folder
     ``report/``), a folder path (``str``/``Path``) or an options ``dict`` for
-    :func:`report`. Returns the written ``Path`` or ``None``.
+    :func:`report_html`. Returns the written ``Path`` or ``None``.
+
+    Parameters
+    ----------
+    design : Design
+        Design to report on.
+    response : array-like, optional
+        Measured response per run.
+    model : Model, optional
+        Model for evaluation and fit.
+    report : None, bool, str, Path or dict
+        Report trigger and options (see body).
+    **extra
+        Additional keyword arguments forwarded to :func:`report_html`.
+
+    Returns
+    -------
+    Path or None
+        Path to the written HTML when a report was generated.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> from doekit.presentation.report_impl import run_report_arg
+    >>> run_report_arg(ed.plackett_burman(4), report=False) is None
+    True
     """
     if report is None or report is False:
         return None
@@ -429,7 +475,8 @@ def report_html(design: Design, response=None, model: Optional[Model] = None,
     """Generate an HTML report of the design (and its analysis if responses are given).
 
     Without ``response`` it produces a *design-quality* report; with ``response``,
-    a *complete* one (analysis + anomalies).
+    a *complete* one (analysis + anomalies). Output is either a portable folder
+    (``index.html``, CSS, PNGs, CSVs) or a single self-contained HTML file.
 
     Parameters
     ----------
@@ -467,6 +514,23 @@ def report_html(design: Design, response=None, model: Optional[Model] = None,
     -------
     pathlib.Path
         Path to the written HTML file (the ``index.html`` in folder mode).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib is not installed (``pip install doekit[report]``).
+
+    Notes
+    -----
+    Narrative text is rule-based (deterministic, no LLM) for reproducibility.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.plackett_burman(4)
+    >>> path = ed.report(d, seed=0)  # design-quality report
+    >>> path.name
+    'index.html'
     """
     plt = _require_mpl()
     from ..presentation.render import figures_mpl as plotting  # noqa: PLC0415

@@ -1,4 +1,9 @@
-"""Deterministic automatic-conclusions for humans, agents, and LLMs."""
+"""Deterministic automatic conclusions for humans, agents, and LLMs.
+
+Builds ``doekit.AutomaticConclusions/1`` from computed design quality, fit,
+power, VIF, and threshold gates — no invented statistics. The ``gate_board``
+and ``llm_contract`` sections constrain downstream paraphrasing.
+"""
 
 from __future__ import annotations
 
@@ -104,12 +109,7 @@ def _process_gate(
     comparison: Optional[Mapping[str, Any]],
     unknowns: Sequence[str],
 ) -> dict:
-    """Suggest stop | augment | redesign, delegating to the decision engine.
-
-    The engine is the single source of decision logic; here we build a gate-mode
-    context (no scoring metrics, just quality/inference/worth_it) and translate
-    its :class:`Decision` back into the ``gate_board`` process vocabulary.
-    """
+    """Map quality/inference/comparison to stop | augment | redesign via the decision engine."""
     from ...orchestration.decide import (  # noqa: PLC0415
         DecisionContext, decide_next_action,
     )
@@ -154,7 +154,7 @@ def _collect_rules(
     comparison: Optional[Mapping[str, Any]],
     lang: str,
 ) -> list[dict]:
-    """Tag rule-based recommendations with stable rule ids."""
+    """Collect rule-based recommendations with stable ``rules[].id`` tags."""
     kind = design.metadata.get("kind", "")
     rules: list[dict] = []
     texts = _recommendations(design, eff, fit, thr, lang)
@@ -227,7 +227,43 @@ def build_conclusions(
     wave_id: str = "",
     project_name: str = "",
 ) -> dict:
-    """Build ``doekit.AutomaticConclusions/1`` from computed facts only."""
+    """Build a ``doekit.AutomaticConclusions/1`` document from computed facts.
+
+    Aggregates design evaluation, fit inference, threshold gates, and optional
+    comparison into a JSON-safe payload suitable for files, MCP, and LLM
+    consumption. Does not invent efficiencies, p-values, or significance claims.
+
+    Parameters
+    ----------
+    design : Design
+        Design under review.
+    response : array-like, optional
+        Response vector for fit and inference gates.
+    model : Model, optional
+        Fitted model; resolved from the design when omitted.
+    evaluation : Evaluation or mapping, optional
+        Precomputed evaluation; evaluated on the fly when omitted.
+    fit : FitResult, optional
+        Precomputed fit; fitted when ``response`` is given and fit is omitted.
+    thresholds : mapping of str to float, optional
+        Gate thresholds merged with :data:`DEFAULT_THRESHOLDS`.
+    comparison : mapping, optional
+        Comparison facts (e.g. ``worth_it``, ``summary``) for the process gate.
+    lang : str, default ``"en"``
+        Language for narrative strings.
+    doekit_version : str, default ``""``
+        Version string in provenance; current package version when empty.
+    wave_id : str, default ``""``
+        Wave identifier for provenance.
+    project_name : str, default ``""``
+        Project name for provenance.
+
+    Returns
+    -------
+    dict
+        Schema ``doekit.AutomaticConclusions/1`` with keys ``provenance``,
+        ``facts``, ``rules``, ``gate_board``, ``unknowns``, ``llm_contract``.
+    """
     from ..._version import __version__ as _ver  # noqa: PLC0415
 
     thr = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
@@ -326,7 +362,18 @@ def build_conclusions(
 
 
 def conclusions_to_markdown(conclusions: Mapping[str, Any]) -> str:
-    """Render a short markdown view of automatic conclusions."""
+    """Render automatic conclusions as a short Markdown report.
+
+    Parameters
+    ----------
+    conclusions : mapping
+        ``doekit.AutomaticConclusions/1`` payload from :func:`build_conclusions`.
+
+    Returns
+    -------
+    str
+        Markdown with gate board, executive summary, rules, unknowns, and LLM contract.
+    """
     prov = conclusions.get("provenance") or {}
     gates = conclusions.get("gate_board") or {}
     facts = conclusions.get("facts") or {}

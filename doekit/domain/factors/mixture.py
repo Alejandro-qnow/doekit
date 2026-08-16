@@ -11,11 +11,15 @@ from .protocols import Factor
 
 @dataclass
 class MixtureFactor(Factor):
-    """Mixture component (Scheffé / simplex designs).
+    """Mixture component for Scheffé / simplex designs.
 
-    Values are **proportions** already on a meaningful scale. Encoding is the
-    identity (assessment does not map them to ``±1``); the experimental region
-    is a simplex, not a hypercube.
+    Values are **proportions** on ``[lower, upper]`` subject to ``sum x_i = 1``
+    across components. Encoding is the identity (proportions are not mapped to
+    ``±1``); the experimental region is a simplex, not a hypercube.
+
+    Formulas
+    --------
+    Constraint: ``sum_i x_i = 1`` with ``lower_i <= x_i <= upper_i``.
 
     Parameters
     ----------
@@ -25,6 +29,18 @@ class MixtureFactor(Factor):
         Lower bound on the proportion.
     upper : float, default 1.0
         Upper bound on the proportion.
+
+    Raises
+    ------
+    ValueError
+        When bounds violate ``0 <= lower < upper <= 1``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> f = ed.MixtureFactor("A")
+    >>> float(f.encode(0.5))
+    0.5
     """
 
     name: str
@@ -43,7 +59,7 @@ class MixtureFactor(Factor):
         return True
 
     def encode(self, values):
-        """Proportions stay as-is (identity coding for Scheffé models)."""
+        """Return proportions unchanged (identity coding for Scheffé models)."""
         return np.asarray(values, dtype=float)
 
     def decode(self, coded):

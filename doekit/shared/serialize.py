@@ -1,4 +1,8 @@
-"""Versioned JSON helpers shared by Design / FitResult / evaluation DTOs."""
+"""Versioned JSON helpers shared by Design, FitResult, and evaluation DTOs.
+
+Recursively converts numpy and pandas types to native Python values suitable
+for ``json.dumps``, wave artifacts, and MCP tool responses.
+"""
 
 from __future__ import annotations
 
@@ -6,9 +10,20 @@ import numpy as np
 
 
 def jsonify(obj):
-    """Convert nested numpy/pandas scalars to native JSON-safe types.
+    """Convert nested numpy/pandas values to JSON-safe native types.
 
-    NaN/Inf float scalars become ``None`` so MCP and file codecs stay valid.
+    DataFrames become lists of row dicts; Series become str-keyed dicts.
+    NaN and Inf float scalars become ``None`` so file and MCP codecs stay valid.
+
+    Parameters
+    ----------
+    obj : any
+        Object to convert (dict, list, DataFrame, ndarray, scalar, etc.).
+
+    Returns
+    -------
+    any
+        JSON-serializable structure with the same nesting shape as ``obj``.
     """
     try:
         import pandas as pd  # noqa: PLC0415
@@ -35,7 +50,20 @@ def jsonify(obj):
 
 
 def as_float_list(a) -> list:
-    """JSON-safe list of floats (NaN/Inf -> None)."""
+    """Convert an array-like to a JSON-safe list of floats.
+
+    NaN and Inf entries become ``None``.
+
+    Parameters
+    ----------
+    a : array-like
+        Values to flatten to a 1-D float list.
+
+    Returns
+    -------
+    list
+        Floats and ``None`` placeholders (one per element after ravel).
+    """
     out = []
     for v in np.asarray(a, dtype=float).reshape(-1):
         fv = float(v)

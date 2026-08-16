@@ -12,7 +12,35 @@ from .protocols import Factor
 
 @dataclass
 class DiscreteFactor(Factor):
-    """Numeric factor snapped to nearest level on decode."""
+    """Numeric factor with a finite ordered level set.
+
+    Encoding uses the range from the smallest to largest level mapped to
+    ``[-1, +1]``; decoding snaps to the nearest discrete level.
+
+    Formulas
+    --------
+    Same linear coding as :class:`ContinuousFactor` on ``[levels[0], levels[-1]]``;
+    decode selects ``argmin |x - level|``.
+
+    Parameters
+    ----------
+    name : str
+        Factor name.
+    levels : sequence of float
+        Allowed numeric levels (at least two, sorted on init).
+
+    Raises
+    ------
+    ValueError
+        When fewer than two levels are given.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> f = ed.DiscreteFactor("dose", [10, 20, 30])
+    >>> f.decode(-1.0)
+    10.0
+    """
 
     name: str
     levels: Sequence[float]

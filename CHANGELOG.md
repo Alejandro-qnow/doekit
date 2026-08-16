@@ -6,6 +6,12 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Documentación
+- Convención híbrida de docstrings (**NumPy** + `Formulas` + `Examples`) fijada en
+  `CONTRIBUTING.md` y aplicada a la API pública (domain, generation, assessment,
+  orchestration, presentation/workspace, adapters/MCP, CLI). Idioma inglés;
+  helpers privados siguen en una línea.
+
 ## [0.9.0] - 2026-08-16
 
 ### Añadido — agentic-core (interpret · decide · monitor · memoria · MCP)

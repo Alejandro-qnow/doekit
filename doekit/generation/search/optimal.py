@@ -26,7 +26,16 @@ def kl_exchange(model_matrix: np.ndarray, experiments: int, design_k: Optional[i
                 candidates_l: Optional[int] = None, seed_design_size: int = 2,
                 max_iterations: int = 1000, tolerance: float = 1e-9,
                 rng: Optional[np.random.Generator] = None) -> list[int]:
-    """KL-exchange for D-optimality. Returns the selected row indices.
+    """Run KL-exchange to select a D-optimal subset of rows.
+
+    Greedy seed growth by maximum leverage, then pairwise exchanges between
+    low-leverage design rows and high-leverage candidates that improve the
+    D-efficiency determinant criterion.
+
+    Formulas
+    --------
+    Exchange gain uses leverage ``h_ii = x_i' (X'X)^-1 x_i``; a swap is accepted
+    when the KL delta exceeds 1 (Cook & Nachtsheim exchange for D-optimality).
 
     Parameters
     ----------
@@ -48,7 +57,7 @@ def kl_exchange(model_matrix: np.ndarray, experiments: int, design_k: Optional[i
     Returns
     -------
     list of int
-        Indices of the selected rows.
+        Indices of the selected rows into ``model_matrix``.
     """
     X = np.asarray(model_matrix, dtype=float)
     N, p = X.shape
@@ -110,10 +119,11 @@ def fedorov_exchange(model_matrix: np.ndarray, experiments: int, criterion_fn,
                      n_restarts_rows: Optional[int] = None, max_iterations: int = 1000,
                      tolerance: float = 1e-9, rng: Optional[np.random.Generator] = None,
                      moment_matrix: Optional[np.ndarray] = None) -> list[int]:
-    """Fedorov exchange for a generic criterion (larger is better).
+    """Run Fedorov exchange for a generic optimality criterion.
 
     Tries swapping each design row for each candidate and applies the best swap
-    until there is no improvement. Works with any criterion.
+    until there is no improvement. Works with any registered criterion (D, A,
+    I, etc.).
 
     Parameters
     ----------
@@ -137,7 +147,7 @@ def fedorov_exchange(model_matrix: np.ndarray, experiments: int, criterion_fn,
     Returns
     -------
     list of int
-        Indices of the selected rows.
+        Indices of the selected rows into ``model_matrix``.
     """
     X = np.asarray(model_matrix, dtype=float)
     N = X.shape[0]
@@ -176,7 +186,16 @@ def optimal_design(candidates: Design, n_runs: int, model: Optional[Model] = Non
                    criterion: str = "D", algorithm: Optional[str] = None,
                    n_starts: int = 1, seed: Optional[int] = None,
                    tolerance: float = 1e-9, report=None, **kl_kwargs) -> Design:
-    """Select ``n_runs`` D/A/I-optimal runs from a candidate set.
+    """Select ``n_runs`` optimal runs from a candidate set.
+
+    Supports D/A/T/G/E/I criteria via KL-exchange (D only) or Fedorov exchange.
+    Multi-start restarts escape local optima; final criteria scores are stored
+    in metadata.
+
+    Formulas
+    --------
+    Optimizes the chosen criterion (see :func:`~doekit.domain.criteria.d_criterion`
+    etc.); D-optimality uses KL-exchange on ``det(X'X)^(1/p)``.
 
     Parameters
     ----------
@@ -206,13 +225,22 @@ def optimal_design(candidates: Design, n_runs: int, model: Optional[Model] = Non
     Returns
     -------
     Design
-        The optimal subset, with ``criterion``, ``algorithm``, ``selected_rows``
+        Optimal subset with ``criterion``, ``algorithm``, ``selected_rows``
         and all final ``criteria`` in ``metadata``.
 
     Raises
     ------
     ValueError
         If no model is available, or ``algorithm`` is unknown.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> cand = ed.random_design(ed.as_factors(2), n=50, seed=0)
+    >>> cand.model = ed.Model.main_effects(["factor1", "factor2"])
+    >>> opt = ed.optimal_design(cand, n_runs=8, seed=0)
+    >>> opt.n_runs
+    8
     """
     model = model or candidates.model
     if model is None:

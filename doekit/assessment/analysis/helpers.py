@@ -111,6 +111,9 @@ def _augment_blocks(X: np.ndarray, names: list[str], labels: np.ndarray
 def attach_blocks(design: Design, blocks, name: str = "block") -> Design:
     """Return a copy of ``design`` with a block column and ``metadata['blocking']``.
 
+    Writes per-run block labels into the design matrix and records the blocking
+    metadata so :func:`fit_linear_model` picks up the column automatically.
+
     Parameters
     ----------
     design : Design
@@ -124,6 +127,18 @@ def attach_blocks(design: Design, blocks, name: str = "block") -> Design:
     -------
     Design
         New design with the block column appended (or overwritten).
+
+    Raises
+    ------
+    ValueError
+        If ``blocks`` length does not match ``design.n_runs``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.attach_blocks(ed.plackett_burman(4), [0, 0, 0, 0, 1, 1, 1, 1])
+    >>> d.metadata["blocking"]["n_blocks"]
+    2
     """
     labels = np.asarray(blocks)
     if labels.shape[0] != design.n_runs:

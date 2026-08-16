@@ -11,7 +11,38 @@ from .protocols import Factor
 
 @dataclass
 class ContinuousFactor(Factor):
-    """Continuous factor: ``low -> -1``, ``high -> +1``."""
+    """Continuous factor with standard two-level coding to ``[-1, +1]``.
+
+    Natural values on ``[low, high]`` map linearly to coded ``[-1, +1]`` for
+    response-surface and optimal-design routines.
+
+    Formulas
+    --------
+    ``coded = 2 * (x - low) / (high - low) - 1``
+
+    ``x = low + (coded + 1) / 2 * (high - low)``
+
+    Parameters
+    ----------
+    name : str
+        Factor name.
+    low : float
+        Lower bound in natural units.
+    high : float
+        Upper bound in natural units.
+
+    Raises
+    ------
+    ValueError
+        When ``low == high``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> f = ed.ContinuousFactor("temp", 20.0, 80.0)
+    >>> float(f.encode(50.0))
+    0.0
+    """
 
     name: str
     low: float

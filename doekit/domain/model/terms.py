@@ -7,7 +7,17 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Intercept:
-    """The constant (intercept) term of a model."""
+    """Constant (intercept) column of ones in the model matrix.
+
+    Appears as ``(Intercept)`` in column labels. Omitted in Scheffé mixture
+    models where the constraint ``sum x_i = 1`` replaces the intercept.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.Intercept().label()
+    '(Intercept)'
+    """
 
     def label(self) -> str:
         return "(Intercept)"
@@ -18,7 +28,22 @@ class Intercept:
 
 @dataclass(frozen=True)
 class Main:
-    """A main-effect term for a single factor ``name``."""
+    """Main-effect term for a single factor.
+
+    The model column is the factor column from the run matrix (after any
+    coding applied upstream).
+
+    Parameters
+    ----------
+    name : str
+        Factor name (must match a run-matrix column).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.Main("temperature").label()
+    'temperature'
+    """
 
     name: str
 
@@ -31,7 +56,19 @@ class Main:
 
 @dataclass(frozen=True)
 class Interaction:
-    """An interaction term: the product of the columns in ``names``."""
+    """Interaction term: element-wise product of factor columns.
+
+    Parameters
+    ----------
+    names : tuple of str
+        Factor names whose columns are multiplied (order preserved in label).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.Interaction(("A", "B")).label()
+    'A:B'
+    """
 
     names: tuple
 
@@ -44,7 +81,21 @@ class Interaction:
 
 @dataclass(frozen=True)
 class Power:
-    """A polynomial term ``name`` raised to integer ``degree``."""
+    """Polynomial term: a factor column raised to an integer degree.
+
+    Parameters
+    ----------
+    name : str
+        Factor name.
+    degree : int
+        Exponent (typically ``2`` for pure quadratic terms).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.Power("x", 2).label()
+    'x^2'
+    """
 
     name: str
     degree: int
@@ -60,7 +111,7 @@ Term = object  # Intercept | Main | Interaction | Power
 
 
 def term_from_dict(d: dict) -> Term:
-    """Rebuild a term from its ``to_dict`` output."""
+    """Rebuild a term from its :meth:`to_dict` output."""
     k = d.get("kind")
     if k == "intercept":
         return Intercept()

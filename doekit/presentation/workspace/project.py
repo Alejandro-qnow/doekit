@@ -1,4 +1,10 @@
-"""ExperimentProject and Wave: traceable on-disk experiment packages."""
+"""Traceable on-disk experiment projects and waves.
+
+An :class:`ExperimentProject` groups sequential DoE cycles under
+``experiments/experiment_project_<slug>/``. Each :class:`Wave` is one cycle
+(design → lab → ingest → analyze → conclude) with a fixed directory layout,
+manifest, and checksums for reproducibility.
+"""
 
 from __future__ import annotations
 
@@ -60,9 +66,36 @@ def _file_sha256(path: Path) -> Optional[str]:
 
 
 class Wave:
-    """One DoE cycle on disk (design → lab → ingest → analyze → conclude)."""
+    """One DoE cycle persisted on disk.
+
+    A wave directory contains ``manifest.json``, ``doe-configuration/``,
+    ``data/``, ``results/``, and optional ``automatic-conclusions/``. Status
+    progresses through ``planned`` → ``awaiting_response`` → ``analyzed`` →
+    ``concluded``.
+
+    Attributes
+    ----------
+    path : Path
+        Absolute path to the wave root (e.g. ``waves/wave_001/``).
+    project : ExperimentProject or None
+        Parent project, when opened via :meth:`ExperimentProject.get_wave`.
+    """
 
     def __init__(self, path: PathLike, project: Optional["ExperimentProject"] = None):
+        """Open an existing wave directory.
+
+        Parameters
+        ----------
+        path : str or Path
+            Wave root containing ``manifest.json``.
+        project : ExperimentProject, optional
+            Parent project for provenance metadata.
+
+        Raises
+        ------
+        FileNotFoundError
+            When ``manifest.json`` is missing under ``path``.
+        """
         self.path = Path(path).resolve()
         self.project = project
         if not (self.path / "manifest.json").exists():
@@ -70,10 +103,12 @@ class Wave:
 
     @property
     def wave_id(self) -> str:
+        """Wave folder name (e.g. ``wave_001``)."""
         return self.path.name
 
     @property
     def manifest(self) -> dict:
+        """Parsed ``manifest.json`` for this wave."""
         return _read_json(self.path / "manifest.json")
 
     def _write_manifest(self, data: dict) -> None:
@@ -101,7 +136,18 @@ class Wave:
         return out
 
     def load_experiment(self):
-        """Load :class:`~doekit.orchestration.experiment.Experiment` from this wave."""
+        """Load the experiment snapshot from ``doe-configuration/experiment.json``.
+
+        Returns
+        -------
+        Experiment
+            Reconstructed from the on-disk JSON snapshot.
+
+        Raises
+        ------
+        FileNotFoundError
+            When ``doe-configuration/experiment.json`` is absent.
+        """
         from ...orchestration.experiment import Experiment  # noqa: PLC0415
 
         cfg = self.path / "doe-configuration" / "experiment.json"
@@ -110,7 +156,23 @@ class Wave:
         return Experiment.from_dict(_read_json(cfg))
 
     def ingest_from(self, source: Union[PathLike, pd.DataFrame, Mapping, Any]):
-        """Read responses from CSV/DataFrame and sync into the wave + experiment."""
+        """Ingest lab responses and sync the wave.
+
+        Reads a CSV path or in-memory table, attaches responses to the loaded
+        :class:`~doekit.orchestration.experiment.Experiment`, evaluates if
+        needed, and writes artifacts via :meth:`sync`.
+
+        Parameters
+        ----------
+        source : str, Path, DataFrame, or mapping
+            CSV file path or tabular responses. Non-factor columns become
+            response variables; ``run_id`` is ignored when present.
+
+        Returns
+        -------
+        Experiment
+            Updated experiment with responses and evaluation.
+        """
         exp = self.load_experiment()
         if isinstance(source, (str, Path)):
             frame = pd.read_csv(source)
@@ -140,7 +202,38 @@ class Wave:
         thresholds: Optional[Mapping[str, float]] = None,
         seed: Optional[int] = None,
     ) -> dict:
-        """Write experiment state into the wave (INPUT + available OUTPUT)."""
+        """Persist experiment state into the wave directory.
+
+        Writes configuration, run sheet, responses, evaluation, fit, comparison,
+        and optional HTML report. Updates ``manifest.json`` status, inputs,
+        outputs, and ``metadata/checksums.json``.
+
+        Parameters
+        ----------
+        exp : Experiment
+            Experiment whose state is serialized to disk.
+        write_report : bool, default False
+            When True, render ``reports/index.html``.
+        comparison : mapping or object, optional
+            Comparison result (``to_dict()`` or plain dict) for
+            ``results/comparison.json``.
+        next_runs : mapping or object, optional
+            Next-run proposal for ``results/next_runs.json``.
+        thresholds : mapping of str to float, optional
+            Quality gates merged with :data:`~doekit.presentation.workspace.conclusions.DEFAULT_THRESHOLDS`.
+        seed : int, optional
+            Recorded in ``metadata/provenance.json``.
+
+        Returns
+        -------
+        dict
+            Updated manifest (``status``, ``inputs``, ``outputs``, ``thresholds``).
+
+        Raises
+        ------
+        ValueError
+            When the derived status is not in :data:`~doekit.presentation.workspace.paths.WAVE_STATUSES`.
+        """
         thr = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
         ensure_wave_layout(self.path)
         cfg = self.path / "doe-configuration"
@@ -276,7 +369,30 @@ class Wave:
         write_html: bool = False,
         comparison: Optional[Any] = None,
     ) -> dict:
-        """Generate ``automatic-conclusions/`` from thresholds + computed facts."""
+        """Generate automatic conclusions for this wave.
+
+        Builds ``doekit.AutomaticConclusions/1`` from computed facts and
+        threshold gates, writes ``automatic-conclusions/conclusions.json`` and
+        ``conclusions.md``, and sets manifest status to ``concluded``.
+
+        Parameters
+        ----------
+        exp : Experiment, optional
+            Experiment to conclude; loaded from disk when omitted.
+        thresholds : mapping of str to float, optional
+            Gate thresholds; manifest or defaults apply when omitted.
+        lang : str, default ``"en"``
+            Language for narrative strings (``"en"`` or ``"es"``).
+        write_html : bool, default False
+            When True, sync an HTML report before concluding.
+        comparison : mapping or object, optional
+            Comparison facts for the process gate; read from disk when omitted.
+
+        Returns
+        -------
+        dict
+            ``doekit.AutomaticConclusions/1`` payload (JSON-safe).
+        """
         if exp is None:
             exp = self.load_experiment()
         thr = {**DEFAULT_THRESHOLDS, **(thresholds or self.manifest.get("thresholds") or {})}
@@ -330,9 +446,31 @@ class Wave:
 
 
 class ExperimentProject:
-    """On-disk research project containing sequential DoE waves."""
+    """On-disk research project containing sequential DoE waves.
+
+    Layout: ``PROJECT.json``, ``README.md``, and ``waves/wave_NNN/`` children.
+    Use :meth:`create` / :meth:`open` or the module helpers :func:`project` and
+    :func:`open_project`.
+
+    Attributes
+    ----------
+    path : Path
+        Absolute path to the project root.
+    """
 
     def __init__(self, path: PathLike):
+        """Open an existing project directory.
+
+        Parameters
+        ----------
+        path : str or Path
+            Project root containing ``PROJECT.json``.
+
+        Raises
+        ------
+        FileNotFoundError
+            When ``PROJECT.json`` is missing.
+        """
         self.path = Path(path).resolve()
         meta = self.path / "PROJECT.json"
         if not meta.exists():
@@ -341,10 +479,12 @@ class ExperimentProject:
 
     @property
     def name(self) -> str:
+        """Human-readable project name from ``PROJECT.json``."""
         return self._meta["name"]
 
     @property
     def slug(self) -> str:
+        """Filesystem slug derived from :attr:`name`."""
         return self._meta["slug"]
 
     @classmethod
@@ -355,7 +495,33 @@ class ExperimentProject:
         *,
         description: str = "",
     ) -> "ExperimentProject":
-        """Create ``<root>/experiment_project_<slug>/`` with PROJECT.json."""
+        """Create a new experiment project on disk.
+
+        Creates ``<root>/experiment_project_<slug>/`` with ``PROJECT.json``,
+        ``README.md``, and an empty ``waves/`` directory. Returns the existing
+        project unchanged when the directory already exists.
+
+        Parameters
+        ----------
+        name : str
+            Human-readable project name (must contain alphanumeric characters).
+        root : str or Path, default ``"experiments"``
+            Parent directory for the project folder.
+        description : str, default ``""``
+            Free-text description stored in ``PROJECT.json``.
+
+        Returns
+        -------
+        ExperimentProject
+            Handle to the created or existing project.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> proj = ed.ExperimentProject.create("Screening A", root="experiments")
+        >>> proj.slug
+        'screening-a'
+        """
         root = Path(root)
         dirname = project_dirname(name)
         path = root / dirname
@@ -386,7 +552,17 @@ class ExperimentProject:
 
     @classmethod
     def open(cls, path: PathLike) -> "ExperimentProject":
-        """Open an existing project directory."""
+        """Open an existing project directory.
+
+        Parameters
+        ----------
+        path : str or Path
+            Project root containing ``PROJECT.json``.
+
+        Returns
+        -------
+        ExperimentProject
+        """
         return cls(path)
 
     def _next_wave_index(self) -> int:
@@ -403,7 +579,13 @@ class ExperimentProject:
         return (max(idxs) + 1) if idxs else 1
 
     def waves(self) -> list[Wave]:
-        """List waves sorted by id."""
+        """List waves sorted by directory name.
+
+        Returns
+        -------
+        list of Wave
+            One handle per ``waves/wave_NNN/`` with a valid ``manifest.json``.
+        """
         waves_dir = self.path / "waves"
         if not waves_dir.exists():
             return []
@@ -414,10 +596,22 @@ class ExperimentProject:
         return [Wave(p, project=self) for p in paths]
 
     def latest_wave(self) -> Optional[Wave]:
+        """Most recent wave, or ``None`` when the project has no waves."""
         ws = self.waves()
         return ws[-1] if ws else None
 
     def get_wave(self, wave_id: str) -> Wave:
+        """Open a wave by id (e.g. ``"wave_001"``).
+
+        Parameters
+        ----------
+        wave_id : str
+            Wave folder name under ``waves/``.
+
+        Returns
+        -------
+        Wave
+        """
         path = self.path / "waves" / wave_id
         return Wave(path, project=self)
 
@@ -429,7 +623,27 @@ class ExperimentProject:
         thresholds: Optional[Mapping[str, float]] = None,
         seed: Optional[int] = None,
     ) -> Wave:
-        """Create the next wave and write INPUT artifacts from ``exp``."""
+        """Create the next wave and write INPUT artifacts from ``exp``.
+
+        Allocates ``waves/wave_NNN/``, initializes ``manifest.json``, and calls
+        :meth:`Wave.sync`. Links ``parent_wave`` to the latest wave when omitted.
+
+        Parameters
+        ----------
+        exp : Experiment
+            Experiment whose design and configuration seed the new wave.
+        parent_wave : str, optional
+            Prior wave id for lineage; defaults to the latest wave.
+        thresholds : mapping of str to float, optional
+            Quality gates stored in the manifest and sync artifacts.
+        seed : int, optional
+            Recorded in wave provenance metadata.
+
+        Returns
+        -------
+        Wave
+            Handle to the newly created wave directory.
+        """
         thr = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
         idx = self._next_wave_index()
         wave_id = wave_dirname(idx)
@@ -476,12 +690,48 @@ class ExperimentProject:
 
 
 def open_project(path: PathLike) -> ExperimentProject:
-    """Open an existing experiment project."""
+    """Open an existing experiment project.
+
+    Alias for :meth:`ExperimentProject.open`.
+
+    Parameters
+    ----------
+    path : str or Path
+        Project root containing ``PROJECT.json``.
+
+    Returns
+    -------
+    ExperimentProject
+    """
     return ExperimentProject.open(path)
 
 
 def project(name: str, root: PathLike = "experiments", **kwargs) -> ExperimentProject:
-    """Create or open ``experiments/experiment_project_<slug>/``."""
+    """Create or open ``experiments/experiment_project_<slug>/``.
+
+    Opens the project when ``PROJECT.json`` already exists; otherwise creates
+    it via :meth:`ExperimentProject.create`.
+
+    Parameters
+    ----------
+    name : str
+        Human-readable project name.
+    root : str or Path, default ``"experiments"``
+        Parent directory for the project folder.
+    **kwargs
+        Forwarded to :meth:`ExperimentProject.create` (e.g. ``description``).
+
+    Returns
+    -------
+    ExperimentProject
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> proj = ed.project("My study")
+    >>> proj.name
+    'My study'
+    """
     root = Path(root)
     path = root / project_dirname(name)
     if (path / "PROJECT.json").exists():

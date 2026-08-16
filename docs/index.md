@@ -1,11 +1,38 @@
 # doekit
 
-**Design of Experiments (DoE) in Python**: screening, factorial designs, response
-surface, optimal design (D/A/I), mixture / split-plot, sequential augmentation —
-plus a **design-evaluation layer** that most Python DoE libraries lack.
+**Design of Experiments (DoE) in Python** for a **hybrid audience** — **people**
+(the lab) and **LLM agents** that consume it **via MCP** — with one deterministic
+engine. doekit doesn't just *build* designs: it **interprets** and **evaluates**
+them, rigorously.
+
+A **semantic layer** ([`interpret`/`Interpretation`](agents/reference.md)) turns
+metrics into meaning — *what it means, why, what to do, caveats* — **never
+invented**: **facts from doekit, judgment from the user**. Same truth, two
+surfaces: `summary()` / HTML reports for people, `to_dict()` / `for_llm()` for
+agents. Covers screening, response surface, optimal design, mixture/split-plot and
+sequential DoE (**learn** or **optimize**), along the reasoning flow *brief →
+recommend → evaluate → \[lab: ingest\] → analyze → **interpret** → decide
+(stop/augment/refine/redesign) → next*.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Design: User / Agent
+    Design --> Recommend
+    Recommend --> Learn: if learn
+    Recommend --> Optimize: if optimize
+    Learn --> Semantic
+    Optimize --> Semantic
+
+    state best <<choice>>
+    Semantic --> best
+    best --> [*]: if stop
+    best --> Design: if continue
+```
 
 Depends on `numpy`, `pandas`, `scipy` and `statsmodels`. `matplotlib` is optional
-(plots and HTML reports).
+(plots and HTML reports); `doekit[mcp]` serves the agent tools, `doekit[bo]` adds
+the GP surrogate.
 
 ```bash
 pip install doekit            # core
@@ -35,21 +62,26 @@ cand.model = ed.Model.parse("0 ~ x1 + x2 + x1:x2")
 opt = ed.optimal_design(cand, n_runs=12, criterion="D", n_starts=5, seed=1)
 ```
 
-## What sets doekit apart: evaluate the design, not just build it
+## What sets doekit apart: interpret and evaluate, not just build
 
-Most Python DoE libraries **only generate** designs. `doekit` also gives each one a
-reproducible **quality report card** answering *"how far is my design from the
-theoretical optimum?"* — the half of the work that commercial tools (JMP,
-Design-Expert) do:
+Most Python DoE libraries **only generate** designs. doekit adds the other two
+thirds of the work commercial tools (JMP, Design-Expert) do — and does it once for
+both audiences:
+
+1. **Interpret** — the semantic layer reads any result (recommendation,
+   evaluation, fit, proposal, comparison) into `what it means / why / caveats`,
+   same truth for a person or an agent.
+2. **Evaluate** — a reproducible **quality report card**: *"how far is my design
+   from the theoretical optimum?"*
+3. **Build** — the full catalog of generators.
 
 ```python
 ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
-print(ev.summary())
-#   D-efficiency, A-efficiency, G-efficiency, SPV distribution (FDS),
-#   power per term, VIF, alias structure ...
+#   D/A/G-efficiency, SPV distribution (FDS), power per term, VIF, alias structure
 
-ed.report(bb, response=y)   # HTML report folder (needs doekit[report])
-# Or the aggregate loop: ed.experiment(goal=..., factors=..., budget=...)
+print(ed.interpret(ev).for_llm())   # semantic layer: metrics -> meaning (never invented)
+ed.report(bb, response=y)           # HTML report folder for people (needs doekit[report])
+# Aggregate loop: ed.experiment(goal=..., factors=..., budget=...)
 ```
 
 ## Where to go next
@@ -59,5 +91,6 @@ ed.report(bb, response=y)   # HTML report folder (needs doekit[report])
 - **API reference** — auto-generated from the source docstrings.
 - **Guide** — the [notebooks](guide/notebooks.md) walk through real, domain-specific
   cases (chemistry, ML, quantum ML) with the *build → evaluate → benchmark* pattern.
-- **Agents** — portable [experiment-designer skill](agents/index.md) for Cursor,
-  Claude, and VS Code (copy `docs/agents/` into your tool’s skills folder).
+- **Agents & MCP** — the portable [experiment-designer skill](agents/index.md) and
+  the [MCP server](agents/mcp.md) that exposes doekit as agent tools (recommend /
+  evaluate / propose_and_decide).

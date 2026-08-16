@@ -11,7 +11,10 @@ import pandas as pd
 
 @dataclass
 class HypercubeRegion:
-    """Axis-aligned hypercube: continuous factors on ``[-1, 1]``, categoricals sampled.
+    """Axis-aligned hypercube region for standard factorial/RSM designs.
+
+    Continuous factors are sampled uniformly on ``[low, high]`` (default coded
+    ``[-1, 1]``); categorical factors draw uniformly from declared levels.
 
     Parameters
     ----------
@@ -21,6 +24,14 @@ class HypercubeRegion:
         Mapping ``name -> levels`` for categorical factors.
     low, high : float
         Bounds for continuous factors (default coded ``[-1, 1]``).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> r = ed.HypercubeRegion(["x1", "x2"])
+    >>> s = r.sample(5, rng=__import__("numpy").random.default_rng(0))
+    >>> s.shape
+    (5, 2)
     """
 
     factor_names: Sequence[str]
@@ -29,6 +40,20 @@ class HypercubeRegion:
     high: float = 1.0
 
     def sample(self, n: int, rng: Optional[np.random.Generator] = None) -> pd.DataFrame:
+        """Draw ``n`` uniform points from the hypercube.
+
+        Parameters
+        ----------
+        n : int
+            Number of points.
+        rng : numpy.random.Generator, optional
+            Random generator.
+
+        Returns
+        -------
+        DataFrame
+            Sampled factor columns.
+        """
         rng = rng or np.random.default_rng()
         cols = {}
         for name in self.factor_names:
@@ -40,6 +65,18 @@ class HypercubeRegion:
         return pd.DataFrame(cols)
 
     def contains(self, points: pd.DataFrame) -> np.ndarray:
+        """Test membership in the hypercube (and categorical level sets).
+
+        Parameters
+        ----------
+        points : DataFrame
+            Candidate points.
+
+        Returns
+        -------
+        ndarray of bool
+            ``True`` for rows inside the region.
+        """
         mask = np.ones(len(points), dtype=bool)
         for name in self.factor_names:
             if name not in points.columns:
@@ -55,10 +92,32 @@ class HypercubeRegion:
 
 
 def region_from_design(design, model=None):
-    """Build the default region for a design / model factor set.
+    """Build the default experimental region for a design or model.
 
     Mixture factors (or ``metadata['region'] == 'simplex'``) yield a
-    :class:`~doekit.domain.region.simplex.SimplexRegion`; otherwise a hypercube.
+    :class:`~doekit.domain.region.simplex.SimplexRegion`; otherwise a
+    :class:`HypercubeRegion` with categorical level maps from attached factors.
+
+    Parameters
+    ----------
+    design : Design
+        Design whose factors and metadata define the region kind.
+    model : Model, optional
+        Model whose :attr:`~doekit.domain.model.Model.factor_names` override
+        column selection when provided.
+
+    Returns
+    -------
+    HypercubeRegion or SimplexRegion
+        Region appropriate for I/G-efficiency and FDS sampling.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.full_factorial(2)
+    >>> r = ed.region_from_design(d)
+    >>> hasattr(r, "sample")
+    True
     """
     from .simplex import SimplexRegion  # noqa: PLC0415
 

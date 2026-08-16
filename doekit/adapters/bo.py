@@ -52,6 +52,10 @@ def candidates_from_bounds(bounds: Sequence[BoundSpec], n: int = 200,
                            seed: Optional[int] = None) -> Design:
     """Sample a candidate :class:`Design` from factor bounds.
 
+    Builds a random candidate set over the declared factors for
+    :func:`~doekit.orchestration.sequential.augment_design` or optimal subsampling.
+    Attaches a main-effects model when none is provided.
+
     Parameters
     ----------
     bounds : sequence
@@ -67,6 +71,13 @@ def candidates_from_bounds(bounds: Sequence[BoundSpec], n: int = 200,
     -------
     Design
         Candidate set suitable for ``optimal_design`` / ``augment_design``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> cand = ed.candidates_from_bounds([("x1", -1, 1), ("x2", -1, 1)], n=50, seed=0)
+    >>> cand.n_runs == 50 and cand.metadata["kind"] == "BOCandidates"
+    True
     """
     facs = [_factor_from_spec(b) for b in bounds]
     facs = as_factors(facs)
@@ -85,12 +96,15 @@ def candidates_from_skopt_space(space, n: int = 200, names: Optional[Sequence[st
                                 seed: Optional[int] = None) -> Design:
     """Build candidates from a ``skopt.space.Space`` (requires ``doekit[bo]``).
 
+    Maps scikit-optimize dimensions to doekit factors and samples ``n`` points
+    with a fixed RNG seed for reproducibility.
+
     Parameters
     ----------
     space : skopt.space.Space
         Search space.
     n : int, default 200
-        Number of candidate points (via ``space.rvs``).
+        Number of candidate points (via dimension bounds).
     names : sequence of str, optional
         Dimension names; defaults to ``dim.name`` or ``x0..``.
     model : Model, optional
@@ -101,6 +115,12 @@ def candidates_from_skopt_space(space, n: int = 200, names: Optional[Sequence[st
     Returns
     -------
     Design
+        Candidate design with ``metadata["source"] == "skopt"``.
+
+    Raises
+    ------
+    ImportError
+        If scikit-optimize is not installed.
     """
     try:
         from skopt.space import Real, Integer, Categorical  # noqa: PLC0415

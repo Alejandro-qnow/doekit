@@ -1,8 +1,10 @@
 # doekit
 
-**Design of Experiments (DoE) en Python**: screening, factoriales, superficie de respuesta, diseño óptimo (D/A/I) y análisis (OLS con bloques/SE robustos, modelos mixtos).
+**Design of Experiments (DoE) en Python** con un **enfoque híbrido** — **personas** (laboratorio) y **agentes LLM** que lo consumen **vía MCP** — sobre un mismo motor. doekit no solo *construye* diseños: los **interpreta** y los **evalúa**, con rigor.
 
-Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional (gráficos).
+Una **capa semántica** (`interpret`/`Interpretation`) convierte cifras en significado — *qué significa, por qué, qué hacer, con qué salvedades* — **sin inventar nada**: *los hechos vienen de doekit; el juicio, del usuario*. Misma verdad, dos superficies: `summary()`/reportes HTML para personas, `to_dict()`/`for_llm()` para agentes. Cubre screening, factoriales, superficie de respuesta, diseño óptimo (D/A/I), mezcla/split-plot, DoE secuencial (aprender u optimizar) y análisis (OLS con bloques/SE robustos, modelos mixtos).
+
+Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional (gráficos); `doekit[mcp]` sirve las tools para agentes y `doekit[bo]` añade el surrogate GP.
 
 - **Documentación (bilingüe EN/ES):** fuente en [`docs/`](docs/) (MkDocs) — introducción,
   teoría de cada metodología y referencia de API.

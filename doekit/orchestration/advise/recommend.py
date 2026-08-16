@@ -154,7 +154,32 @@ def _build_optimal(facs, model, seed) -> Design:
 
 @dataclass
 class Recommendation:
-    """Result of :func:`recommend_design`."""
+    """Result of :func:`recommend_design`.
+
+    Attributes
+    ----------
+    method : str
+        Winning design method label from the shortlist.
+    design : Design
+        Recommended experimental design.
+    model : Model
+        Model used to evaluate and attach to the design.
+    rationale : str
+        Human-readable justification.
+    table : DataFrame
+        Evaluated alternatives (runs, D/G-eff, SPV, feasibility flags).
+    caveats : list of str
+        Assumptions and limitations.
+    scenario : dict
+        Goal, factor count, budget, constraints snapshot.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> rec = ed.recommend_design("screening", factors=4, budget=20, seed=0)
+    >>> rec.design.n_runs <= 20
+    True
+    """
 
     method: str
     design: Design
@@ -204,13 +229,22 @@ def recommend_design(
 ) -> Recommendation:
     """Recommend the best experimental-design method for a given case.
 
+    Transparent advisor: rule-based shortlist, then multi-objective ranking
+    with D/A/G-efficiency metrics under user ``priorities``.
+
     Parameters
     ----------
     goal : {"screening", "optimization"}
+        Experimental objective.
     factors : int or dict or sequence of Factor
+        Factor specification (count or explicit factors).
     budget : int, optional
+        Maximum number of runs.
     model_order : {"linear", "interactions", "quadratic"}, optional
+        Assumed model order; defaults to linear (screening) or quadratic
+        (optimization).
     priorities : dict, optional
+        Weights for ``"runs"``, ``"precision"``, ``"prediction"`` ranking.
     constrained : bool, default False
         **Deprecated.** Use ``constraints=Constraints(irregular=True)``.
     constraints : Constraints or dict, optional
@@ -219,8 +253,39 @@ def recommend_design(
         Shortcut for mixture / simplex shortlist.
     hard_to_change : sequence of str, optional
         Shortcut for split-plot whole-plot factor names.
-    effect_size, sigma : float
-    seed, n_region
+    effect_size : float, default 1.0
+        Anticipated effect size (documented in caveats for power).
+    sigma : float, default 1.0
+        Noise standard deviation (documented in caveats).
+    seed : int, optional
+        RNG seed for optimal-design search and region sampling.
+    n_region : int, default 4000
+        Region sample size for G-efficiency evaluation.
+
+    Returns
+    -------
+    Recommendation
+        Winning method, design, model, rationale, and alternatives table.
+
+    Raises
+    ------
+    InapplicableDesign
+        When no catalog design applies to the factor / constraint combination.
+    ValueError
+        For unknown ``goal`` or ``model_order``.
+
+    Notes
+    -----
+    ``"Best"`` is a multi-objective trade-off — adjust ``priorities`` for your
+    case. After the first wave, prefer :func:`~doekit.propose_next_runs` for
+    sequential augmentation.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> rec = ed.recommend_design("screening", factors=5, budget=16, seed=0)
+    >>> rec.method is not None and rec.design.n_runs > 0
+    True
     """
     if constrained and constraints is None:
         warnings.warn(

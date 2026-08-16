@@ -28,6 +28,21 @@ def fit_linear_model(design: Design, response, model: Optional[Model] = None,
                      report=None) -> FitResult:
     """Fit an OLS linear model to a design's responses.
 
+    Ordinary least squares via statsmodels on the resolved model matrix ``X``.
+    Factor columns come from the design matrix; block/group columns are excluded
+    from the default main-effects model. Influence diagnostics (leverage,
+    studentized residuals, Cook's distance) use the classical hat matrix.
+
+    Formulas
+    --------
+    - **Coefficients:** ``beta = (X'X)^-1 X'y``.
+    - **Residual variance:** ``sigma2 = RSS / (N - p)`` with
+      ``RSS = sum((y - X @ beta)^2)``.
+    - **Leverage:** ``h_ii = x_i' (X'X)^-1 x_i``.
+    - **Studentized residual:** ``r_i^* = r_i / sqrt(sigma2 * (1 - h_ii))``
+      (externally studentized when residual dof permits).
+    - **Cook's D:** ``D_i = (r_i^2 / (p * sigma2)) * h_ii / (1 - h_ii)^2``.
+
     Parameters
     ----------
     design : Design
@@ -59,6 +74,15 @@ def fit_linear_model(design: Design, response, model: Optional[Model] = None,
     ValueError
         If ``cov_type`` is unknown, blocks are invalid, or the design is
         saturated / rank-deficient after adding blocks.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> pb = ed.plackett_burman(5)
+    >>> y = pb.matrix["factor1"] + pb.matrix["factor2"]
+    >>> fit = ed.fit_linear_model(pb, y)
+    >>> fit.dof > 0 and len(fit.names) == len(fit.coef)
+    True
     """
     if cov_type not in _VALID_COV:
         raise ValueError(

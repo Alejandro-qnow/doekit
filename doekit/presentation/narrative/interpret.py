@@ -275,6 +275,10 @@ def _has(obj, *attrs) -> bool:
 def interpret(result, context: Optional[dict] = None) -> Interpretation:
     """Interpret a single doekit result into a uniform :class:`Interpretation`.
 
+    Composes each result's own ``summary``/``rationale``, ``caveats`` and
+    ``to_dict`` facts into a headline, warnings, next actions and confidence
+    label — without re-deriving statistics.
+
     Parameters
     ----------
     result : Recommendation, DesignEvaluation, FitResult, NextRunsProposal or DesignComparison
@@ -285,11 +289,21 @@ def interpret(result, context: Optional[dict] = None) -> Interpretation:
     Returns
     -------
     Interpretation
+        Uniform view; use :meth:`Interpretation.for_llm` for agent context.
 
     Raises
     ------
     TypeError
         If ``result`` is not a recognized doekit result type.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> from doekit import interpret
+    >>> pb = ed.plackett_burman(5)
+    >>> view = interpret(ed.fit_linear_model(pb, pb.matrix["factor1"]))
+    >>> view.kind == "fit" and "R²" in view.headline
+    True
     """
     _ = context
     for predicate, builder in _DISPATCH:

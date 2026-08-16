@@ -1,4 +1,4 @@
-"""Multi-objective ranking of candidate designs (testeable policy)."""
+"""Multi-objective ranking of candidate designs (testable policy)."""
 
 from __future__ import annotations
 
@@ -6,11 +6,54 @@ import numpy as np
 
 
 def rank_candidates(rows, priorities: dict, budget, caveats: list) -> dict:
-    """Pick the winning row via weighted geometric mean of runs/precision/prediction.
+    """Pick the winning candidate row via weighted geometric mean of objectives.
 
-    Mutates feasible rows with ``_score`` and may prepend a caveat when nothing
-    is feasible under the budget.
+    Scores each feasible row on run economy, D-efficiency (precision), and
+    G-efficiency (prediction), then returns the row with the highest weighted
+    geometric mean. Mutates feasible rows with ``_score`` and may prepend a
+    caveat when nothing fits the budget.
+
+    Formulas
+    --------
+    For each feasible row ``r`` with minimum feasible run count ``n_min``:
+
+    - ``s_runs = n_min / r["runs"]``
+    - ``s_prec = max(eps, r["D_eff"] / 100)``
+    - ``s_pred = max(eps, r["G_eff"] / 100)``
+    - ``score = s_runs^w0 * s_prec^w1 * s_pred^w2``
+
+    Weights ``w`` are normalized from ``priorities["runs"]``,
+    ``priorities["precision"]``, and ``priorities["prediction"]``.
+
+    Parameters
+    ----------
+    rows : list of dict
+        Candidate rows from the advisor shortlist. Each must include ``"runs"``,
+        ``"D_eff"``, ``"G_eff"``, and ``"_feasible"`` (bool).
+    priorities : dict
+        Relative weights with keys ``"runs"``, ``"precision"``, ``"prediction"``.
+    budget : int or None
+        Run budget; used only in the fallback caveat message.
+    caveats : list of str
+        Mutable list; a budget warning is prepended when no row is feasible.
+
+    Returns
+    -------
+    dict
+        The winning row (same structure as an element of ``rows``).
+
+    Examples
+    --------
+    >>> from doekit.orchestration.advise.rank import rank_candidates
+    >>> rows = [
+    ...     {"method": "A", "runs": 8, "D_eff": 90, "G_eff": 85, "_feasible": True},
+    ...     {"method": "B", "runs": 12, "D_eff": 95, "G_eff": 90, "_feasible": True},
+    ... ]
+    >>> winner = rank_candidates(rows, {"runs": 1, "precision": 1, "prediction": 1}, 20, [])
+    >>> winner["method"] in ("A", "B")
+    True
     """
+
     feas = [r for r in rows if r["_feasible"]]
     if not feas:
         min_runs = min(rows, key=lambda r: r["runs"])

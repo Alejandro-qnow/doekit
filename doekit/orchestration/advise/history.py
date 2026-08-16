@@ -33,6 +33,15 @@ class ExperimentRecord:
     metrics : dict
         Outcome signals (``delta_D_efficiency``, ``delta_mean_power``,
         ``uncertainty``, …).
+    metadata : dict
+        Provenance and extra context.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> rec = ed.ExperimentRecord("w1", "screening", ["A", "B"], {"D_efficiency": 85.0})
+    >>> rec.objective == "screening"
+    True
     """
 
     experiment_id: str
@@ -64,7 +73,31 @@ class ExperimentRecord:
 
 @dataclass
 class PriorEstimate:
-    """Priors transferred from similar past experiments."""
+    """Priors transferred from similar past experiments.
+
+    Attributes
+    ----------
+    objective : str
+        Goal label the priors apply to.
+    n_sources : int
+        Number of similar records averaged.
+    expected_delta_d_efficiency : float
+        Mean historical D-efficiency gain.
+    expected_delta_mean_power : float
+        Mean historical power gain.
+    expected_uncertainty : float
+        Mean historical uncertainty level.
+    metadata : dict
+        e.g. ``{"fallback": True}`` when no similar history exists.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = ed.ExperimentHistory()
+    >>> prior = ed.learn_priors(hist, "screening", ["A", "B"])
+    >>> prior.n_sources == 0
+    True
+    """
 
     objective: str
     n_sources: int
@@ -87,7 +120,25 @@ class PriorEstimate:
 
 @dataclass
 class HistoricalRecommendation:
-    """Actionable advice derived from similar history."""
+    """Actionable advice derived from similar experiment history.
+
+    Attributes
+    ----------
+    title : str
+        Short headline for the recommendation.
+    rationale : str
+        Why this advice follows from past experiments.
+    actions : list of str
+        Concrete next steps for the experimenter.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = ed.ExperimentHistory()
+    >>> advice = ed.historical_recommendation(hist, "optimization", ["T", "pH"])
+    >>> len(advice.actions) >= 1
+    True
+    """
 
     title: str
     rationale: str
@@ -103,7 +154,20 @@ class HistoricalRecommendation:
 
 
 class ExperimentHistory:
-    """A small, similarity-searchable collection of :class:`ExperimentRecord`."""
+    """A small, similarity-searchable collection of :class:`ExperimentRecord`.
+
+    Typically built from an :class:`~doekit.presentation.workspace.ExperimentProject`
+    via :meth:`from_project`.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = ed.ExperimentHistory([
+    ...     ed.ExperimentRecord("w1", "screening", ["A", "B"], {}),
+    ... ])
+    >>> len(hist) == 1
+    True
+    """
 
     def __init__(self, records: Optional[list] = None):
         self._records: dict = {}
@@ -120,7 +184,36 @@ class ExperimentHistory:
         return len(self._records)
 
     def find_similar(self, objective: str, factor_names, top_k: int = 5) -> list:
-        """Rank records by objective match (0.6) + factor overlap (0.4)."""
+        """Rank records by objective match and factor overlap.
+
+        Formulas
+        --------
+        ``score = 0.6 * objective_match + 0.4 * |factors ∩ target| / |target|``.
+
+        Parameters
+        ----------
+        objective : str
+            Goal label for the new case.
+        factor_names : sequence of str
+            Factor names in the new case.
+        top_k : int, default 5
+            Maximum records to return.
+
+        Returns
+        -------
+        list of ExperimentRecord
+            Similar records, best match first.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> hist = ed.ExperimentHistory([
+        ...     ed.ExperimentRecord("w1", "screening", ["A", "B"], {}),
+        ... ])
+        >>> sim = hist.find_similar("screening", ["A"])
+        >>> len(sim) == 1
+        True
+        """
         target = {f.lower() for f in factor_names}
         scored = []
         for rec in self._records.values():
@@ -136,7 +229,25 @@ class ExperimentHistory:
     # -- construction from the traceable workspace --------------------------
     @classmethod
     def from_project(cls, project) -> "ExperimentHistory":
-        """Build history from an :class:`ExperimentProject`'s waves (best-effort)."""
+        """Build history from an :class:`ExperimentProject`'s waves (best-effort).
+
+        Parameters
+        ----------
+        project : ExperimentProject
+            Traceable project whose waves are scanned.
+
+        Returns
+        -------
+        ExperimentHistory
+            History with one record per readable wave.
+
+        Examples
+        --------
+        >>> import doekit as ed
+        >>> hist = ed.ExperimentHistory()
+        >>> isinstance(hist, ed.ExperimentHistory)
+        True
+        """
         records = []
         for wave in project.waves():
             rec = _record_from_wave(wave)
@@ -169,7 +280,34 @@ def _record_from_wave(wave) -> Optional[ExperimentRecord]:
 
 def learn_priors(history: ExperimentHistory, objective: str, factor_names,
                  top_k: int = 5) -> PriorEstimate:
-    """Average outcome signals over similar past experiments into priors."""
+    """Average outcome signals over similar past experiments into priors.
+
+    Parameters
+    ----------
+    history : ExperimentHistory
+        Past experiment records.
+    objective : str
+        Goal label for the new case.
+    factor_names : sequence of str
+        Factor names in the new case.
+    top_k : int, default 5
+        Number of similar records to average.
+
+    Returns
+    -------
+    PriorEstimate
+        Expected deltas and uncertainty; ``n_sources=0`` when history is empty.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = ed.ExperimentHistory([
+    ...     ed.ExperimentRecord("w1", "screening", ["A"], {"delta_D_efficiency": 6.0}),
+    ... ])
+    >>> prior = ed.learn_priors(hist, "screening", ["A"])
+    >>> prior.n_sources == 1
+    True
+    """
     similar = history.find_similar(objective, factor_names, top_k=top_k)
     if not similar:
         return PriorEstimate(objective=objective, n_sources=0,
@@ -188,7 +326,39 @@ def learn_priors(history: ExperimentHistory, objective: str, factor_names,
 
 def historical_recommendation(history: ExperimentHistory, objective: str,
                               factor_names, top_k: int = 5) -> HistoricalRecommendation:
-    """Turn similar history into a short strategy suggestion for a new case."""
+    """Turn similar history into a short strategy suggestion for a new case.
+
+    Parameters
+    ----------
+    history : ExperimentHistory
+        Past experiment records.
+    objective : str
+        Goal label for the new case.
+    factor_names : sequence of str
+        Factor names in the new case.
+    top_k : int, default 5
+        Number of similar records to consult.
+
+    Returns
+    -------
+    HistoricalRecommendation
+        Title, rationale, and actionable steps.
+
+    Notes
+    -----
+    When mean historical ``delta_D_efficiency >= 5``, the advice favours
+    expansion; otherwise it suggests caution and model refinement.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> hist = ed.ExperimentHistory([
+    ...     ed.ExperimentRecord("w1", "screening", ["A"], {"delta_D_efficiency": 8.0}),
+    ... ])
+    >>> advice = ed.historical_recommendation(hist, "screening", ["A"])
+    >>> "expansion" in advice.title.lower() or "caution" in advice.title.lower()
+    True
+    """
     similar = history.find_similar(objective, factor_names, top_k=top_k)
     if not similar:
         return HistoricalRecommendation(

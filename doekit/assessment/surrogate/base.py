@@ -33,8 +33,15 @@ from ...domain.factors import ContinuousFactor, CategoricalFactor
 class Surrogate(Protocol):
     """Predictive model with calibrated uncertainty (larger ``std`` = less sure).
 
-    Concrete surrogates additionally expose ``model`` (the polynomial trend),
-    ``factors`` and ``factor_names`` so the optimize layer can build candidates.
+    A surrogate mirrors a fit but adds epistemic ``std(x)`` at unseen points —
+    the signal Bayesian optimization uses. Concrete implementations expose
+    ``model``, ``factors`` and ``factor_names`` for candidate generation.
+
+    Formulas
+    --------
+    - **Prediction:** ``predict(X) -> (mean, std)`` row-wise.
+    - **Calibration:** LOO interval coverage should match nominal levels when
+      ``std`` is honest (see :func:`loo_calibration`).
     """
 
     def predict(self, X_new) -> Tuple[np.ndarray, np.ndarray]:
@@ -51,7 +58,19 @@ class Surrogate(Protocol):
 # ---------------------------------------------------------------------------
 
 def infer_factors(frame: pd.DataFrame) -> list:
-    """Infer factors from a factor frame (continuous ranges / categoricals)."""
+    """Infer factors from a factor frame (continuous ranges / categoricals).
+
+    Parameters
+    ----------
+    frame : pandas.DataFrame
+        Factor-level columns (one column per factor).
+
+    Returns
+    -------
+    list
+        :class:`ContinuousFactor` / :class:`CategoricalFactor` instances inferred
+        from dtypes and observed ranges/levels.
+    """
     facs: list = []
     for name in frame.columns:
         col = frame[name]
@@ -66,7 +85,25 @@ def infer_factors(frame: pd.DataFrame) -> list:
 
 
 def as_factor_frame(X, factor_names: list) -> pd.DataFrame:
-    """Coerce Design / DataFrame / ndarray to a factor-column DataFrame."""
+    """Coerce Design / DataFrame / ndarray to a factor-column DataFrame.
+
+    Parameters
+    ----------
+    X : Design, DataFrame or array-like
+        Points to predict at.
+    factor_names : list of str
+        Expected factor column order.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Frame with columns ``factor_names`` in order.
+
+    Raises
+    ------
+    ValueError
+        If columns are missing or the array width does not match ``factor_names``.
+    """
     if isinstance(X, Design):
         X = X.matrix
     if isinstance(X, pd.DataFrame):
@@ -88,6 +125,18 @@ def encode_features(factors: list, frame: pd.DataFrame) -> np.ndarray:
 
     Continuous / discrete factors are coded to ``[-1, 1]``; categoricals are
     one-hot expanded so the kernel treats levels as equidistant.
+
+    Parameters
+    ----------
+    factors : list
+        Factor definitions (with ``encode`` or categorical levels).
+    frame : pandas.DataFrame
+        Factor columns aligned with ``factors``.
+
+    Returns
+    -------
+    ndarray
+        ``(n_rows, n_features)`` float matrix for kernel methods.
     """
     by_name = {getattr(f, "name", None): f for f in factors}
     cols: list[np.ndarray] = []
@@ -124,6 +173,12 @@ def loo_calibration(fit_fn, frame: pd.DataFrame, y: np.ndarray,
     whether the observation falls inside each nominal interval. Well-calibrated
     ``sigma(x)`` gives coverage close to the nominal level.
 
+    Formulas
+    --------
+    For nominal level ``L``, interval half-width ``z_L = Phi^-1(0.5 + L/2)``.
+    A point is covered when ``|y_i - mu_i| <= z_L * std_i``. Reported coverage
+    is the fraction covered across successful LOO refits.
+
     Parameters
     ----------
     fit_fn : callable
@@ -138,7 +193,12 @@ def loo_calibration(fit_fn, frame: pd.DataFrame, y: np.ndarray,
     Returns
     -------
     dict
-        ``{"levels", "coverage" {level: frac}, "rmse_standardized", "n"}``.
+        Keys ``levels``, ``coverage`` {level: frac}, ``rmse_standardized``, ``n``.
+        Returns NaN coverage when ``n < 4`` (LOO is unreliable on tiny samples).
+
+    Notes
+    -----
+    Failed refits (singular designs) are skipped; ``n`` counts successful folds.
     """
     y = np.asarray(y, dtype=float).reshape(-1)
     n = len(y)
@@ -216,6 +276,10 @@ def fit_surrogate(design, y, kind: str = "auto", model: Optional[Model] = None,
                   factors: Optional[list] = None, **kwargs) -> Surrogate:
     """Fit a surrogate to ``(design, y)``.
 
+    Dispatches to :class:`~doekit.assessment.surrogate.ols.OLSSurrogate` or
+    :class:`~doekit.assessment.surrogate.gp.GPSurrogate`. The default polynomial
+    trend is a full quadratic when no model is attached.
+
     Parameters
     ----------
     design : Design or DataFrame
@@ -235,6 +299,23 @@ def fit_surrogate(design, y, kind: str = "auto", model: Optional[Model] = None,
     Returns
     -------
     Surrogate
+        Fitted surrogate exposing ``predict`` and ``calibration``.
+
+    Raises
+    ------
+    ValueError
+        If ``kind`` is not ``"auto"``, ``"ols"`` or ``"gp"``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.central_composite(2)
+    >>> cols = list(d.matrix.columns)
+    >>> y = d.matrix[cols[0]] ** 2 + d.matrix[cols[1]]
+    >>> sur = ed.fit_surrogate(d, y, kind="ols")
+    >>> mean, std = sur.predict(d)
+    >>> mean.shape == (d.n_runs,) and (std >= 0).all()
+    True
     """
     kind = kind.strip().lower()
     if kind == "auto":

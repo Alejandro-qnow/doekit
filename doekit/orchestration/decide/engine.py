@@ -32,6 +32,9 @@ _GATE_STATUS = {"augment": "augment", "refine": "augment",
 class DecisionContext:
     """Signals needed to decide the next experimental step.
 
+    Built by :func:`context_from_proposal` or manually, then passed to
+    :func:`decide_next_action`.
+
     Attributes
     ----------
     budget_total, budget_spent : int
@@ -52,7 +55,18 @@ class DecisionContext:
         Normalized uncertainty in ``[0, 1]`` (surrogate mis-calibration /
         explore stance).
     worth_it : bool, optional
-        The cheap heuristic from :class:`DesignComparison`.
+        The cheap heuristic from :class:`~doekit.orchestration.sequential.DesignComparison`.
+    unknowns : list
+        Open questions flagged for the decision layer.
+    metadata : dict
+        Extra context attached by callers.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(budget_total=20, budget_spent=12, intent="learn")
+    >>> ctx.budget_remaining == 8
+    True
     """
 
     budget_total: int = 0
@@ -82,7 +96,28 @@ class DecisionContext:
 
 @dataclass
 class DecisionScore:
-    """Composite score with a transparent breakdown."""
+    """Composite continuation score with a transparent breakdown.
+
+    Attributes
+    ----------
+    composite : float
+        Weighted benefit minus cost, risk, and uncertainty penalties.
+    benefit, cost, risk, uncertainty_penalty : float
+        Component scores in ``[0, 1]`` (cost may exceed 1 when budget is tight).
+    components : dict
+        Raw metric values used in scoring.
+    rationale : list of str
+        Human-readable scoring steps.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(
+    ...     intent="learn", metrics={"delta_D_efficiency": 8.0, "n_add": 4})
+    >>> score = ed.ContinuationScorer().score(ctx)
+    >>> score.composite == score.composite  # finite composite
+    True
+    """
 
     composite: float
     benefit: float
@@ -103,7 +138,31 @@ class DecisionScore:
 
 @dataclass
 class Decision:
-    """Recommended next action with confidence and a serializable rationale."""
+    """Recommended next action with confidence and a serializable rationale.
+
+    Attributes
+    ----------
+    action : {"augment", "refine", "stop", "redesign"}
+        Recommended experimental next step.
+    confidence : float
+        Confidence in ``[0, 1]``.
+    reasoning : str
+        Short explanation of why this action was chosen.
+    score : DecisionScore, optional
+        Underlying composite score when scoring metrics were available.
+    recommendations : list of str
+        Actionable next steps for the experimenter.
+    metadata : dict
+        Policy name, hard-gate reason, diagnostics snapshot, etc.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(quality="rank_deficient")
+    >>> dec = ed.decide_next_action(ctx)
+    >>> dec.action == "redesign"
+    True
+    """
 
     action: DecisionAction
     confidence: float
@@ -163,6 +222,35 @@ class ContinuationScorer:
     ``learn`` benefit comes from D-efficiency / power gains; ``optimize`` benefit
     comes from the expected improvement (never from D-efficiency, which can drop
     while the outcome improves).
+
+    Formulas
+    --------
+    - **learn:** ``benefit = 0.6 * norm(d_gain, 20) + 0.4 * norm(p_gain, 0.2)``,
+      ``risk = max(0, -g_delta / 10)``.
+    - **optimize:** ``benefit = 1`` when ``predicted_improvement > 0``, else ``0``;
+      ``risk = uncertainty``.
+    - **composite** ``= w_b * benefit - w_c * cost - w_r * risk - w_u * uncertainty``,
+      with ``cost = min(2, extra_runs / budget_remaining)``.
+
+    Parameters
+    ----------
+    benefit_weight : float, default 1.0
+        Weight on the benefit term.
+    cost_weight : float, default 0.7
+        Weight on the run-cost penalty.
+    risk_weight : float, default 0.8
+        Weight on the risk term.
+    uncertainty_weight : float, default 0.6
+        Weight on surrogate / explore uncertainty.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(
+    ...     intent="optimize", metrics={"predicted_improvement": 0.5, "n_add": 2})
+    >>> score = ed.ContinuationScorer().score(ctx)
+    >>> score.benefit == 1.0
+    True
     """
 
     def __init__(self, benefit_weight: float = 1.0, cost_weight: float = 0.7,
@@ -173,6 +261,18 @@ class ContinuationScorer:
         self.uncertainty_weight = uncertainty_weight
 
     def score(self, context: DecisionContext) -> DecisionScore:
+        """Compute the composite continuation score for ``context``.
+
+        Parameters
+        ----------
+        context : DecisionContext
+            Signals including ``intent``, ``metrics``, ``uncertainty``, and budget.
+
+        Returns
+        -------
+        DecisionScore
+            Composite score with benefit/cost/risk breakdown and rationale lines.
+        """
         m = context.metrics
         extra_runs = float(m.get("n_add", m.get("extra_runs", 0.0)))
         remaining = max(1.0, float(context.budget_remaining))
@@ -218,12 +318,42 @@ class ContinuationScorer:
 class DecisionPolicy:
     """Base policy: map a :class:`DecisionScore` to a :class:`Decision`."""
 
-    def decide(self, context: DecisionContext, score: DecisionScore) -> Decision:  # noqa: D401
+    def decide(self, context: DecisionContext, score: DecisionScore) -> Decision:
+        """Return a :class:`Decision` for the given context and score.
+
+        Parameters
+        ----------
+        context : DecisionContext
+            Budget, intent, and gate signals.
+        score : DecisionScore
+            Composite score from :class:`ContinuationScorer`.
+
+        Returns
+        -------
+        Decision
+        """
         raise NotImplementedError
 
 
 class ThresholdPolicy(DecisionPolicy):
-    """Threshold on the composite score: augment / refine / stop."""
+    """Threshold on the composite score: augment / refine / stop.
+
+    Parameters
+    ----------
+    continue_threshold : float, default 0.15
+        Composite score at or above which ``action="augment"``.
+    refine_threshold : float, default -0.05
+        Composite score at or above which ``action="refine"`` (below continue).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(
+    ...     intent="learn", metrics={"delta_D_efficiency": 15.0, "n_add": 2})
+    >>> dec = ed.decide_next_action(ctx, policy=ed.ThresholdPolicy())
+    >>> dec.action in ("augment", "refine", "stop")
+    True
+    """
 
     def __init__(self, continue_threshold: float = 0.15,
                  refine_threshold: float = -0.05):
@@ -255,7 +385,15 @@ class ThresholdPolicy(DecisionPolicy):
 
 
 class RiskAdaptivePolicy(DecisionPolicy):
-    """Shift the thresholds by risk tolerance (low = more conservative)."""
+    """Shift continuation thresholds by risk tolerance (low = more conservative).
+
+    Parameters
+    ----------
+    base_continue : float, default 0.15
+        Base augment threshold for moderate risk tolerance.
+    base_refine : float, default -0.05
+        Base refine threshold for moderate risk tolerance.
+    """
 
     def __init__(self, base_continue: float = 0.15, base_refine: float = -0.05):
         self.base_continue = base_continue
@@ -274,7 +412,16 @@ class RiskAdaptivePolicy(DecisionPolicy):
 
 
 class BudgetAwarePolicy(DecisionPolicy):
-    """Let the run budget dominate before scoring benefit."""
+    """Let the run budget dominate before scoring benefit.
+
+    Stops immediately when the budget is exhausted and refines when remaining
+    runs are scarce and the composite score is marginal.
+
+    Parameters
+    ----------
+    min_remaining_for_continue : int, default 3
+        Minimum remaining runs before a low-score continuation is blocked.
+    """
 
     def __init__(self, min_remaining_for_continue: int = 3):
         self.min_remaining_for_continue = min_remaining_for_continue
@@ -336,15 +483,33 @@ def decide_next_action(context: DecisionContext, scorer: Optional[ContinuationSc
     Parameters
     ----------
     context : DecisionContext
+        Budget, intent, quality/inference gates, metrics, and uncertainty.
     scorer : ContinuationScorer, optional
+        Scorer for benefit/cost/risk; defaults to :class:`ContinuationScorer`.
     policy : DecisionPolicy, optional
-        Defaults to :class:`ThresholdPolicy`.
+        Policy mapping score to action; defaults to :class:`ThresholdPolicy`.
     convergence : object, optional
-        Anything exposing ``should_stop`` / ``reason`` (see M3 monitoring).
+        Anything exposing ``should_stop`` / ``reason`` (see
+        :func:`~doekit.orchestration.decide.check_convergence`).
 
     Returns
     -------
     Decision
+        Recommended action with confidence, reasoning, and recommendations.
+
+    Notes
+    -----
+    For ``intent="optimize"``, benefit is driven by ``predicted_improvement``,
+    not D-efficiency — the latter can fall while the response improves.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ctx = ed.DecisionContext(
+    ...     budget_total=16, budget_spent=16, intent="learn")
+    >>> dec = ed.decide_next_action(ctx)
+    >>> dec.action == "stop"
+    True
     """
     if context.quality == "rank_deficient":
         return Decision("redesign", 0.9,
@@ -391,6 +556,36 @@ def context_from_proposal(proposal, *, budget_total: int = 0, budget_spent: int 
 
     Reads the comparison deltas (learn) or the native optimize fields
     (``predicted_improvement``, ``explore_exploit``, optional calibration).
+
+    Parameters
+    ----------
+    proposal : NextRunsProposal
+        Output of :func:`~doekit.orchestration.sequential.propose_next_runs`.
+    budget_total : int, default 0
+        Total run budget (``0`` = unbounded).
+    budget_spent : int, default 0
+        Runs already committed or executed.
+    risk_tolerance : {"low", "moderate", "high"}, default "moderate"
+        Passed through to the decision policy.
+    use_calibration : bool, default False
+        When ``True``, surrogate calibration can override explore/exploit
+        uncertainty for optimize proposals.
+
+    Returns
+    -------
+    DecisionContext
+        Context ready for :func:`decide_next_action`.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import numpy as np
+    >>> pb = ed.plackett_burman(6)
+    >>> y = np.random.default_rng(0).normal(size=pb.n_runs)
+    >>> prop = ed.propose_next_runs(pb, response=y, n_add=2, seed=0)
+    >>> ctx = ed.context_from_proposal(prop, budget_total=20, budget_spent=pb.n_runs)
+    >>> ctx.intent == "learn"
+    True
     """
     cmp = getattr(proposal, "comparison", None)
     delta = dict(getattr(cmp, "delta", {}) or {})

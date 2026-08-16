@@ -21,8 +21,16 @@ def lack_of_fit(design: Design, response, model: Optional[Model] = None,
     """Lack-of-fit vs pure-error decomposition when replicate runs exist.
 
     Identical rows of the (non-block) factor matrix are treated as replicates.
-    Pure-error SS is the within-replicate sum of squares; lack-of-fit SS is
-    ``RSS - SS_PE``. An F-test compares LOF against pure error.
+    Pure-error SS is the within-replicate variation; lack-of-fit SS is what
+    remains of the model RSS after subtracting pure error.
+
+    Formulas
+    --------
+    - **Pure error:** ``SS_PE = sum_g sum_{i in g} (y_i - ybar_g)^2``,
+      ``df_PE = sum_g (n_g - 1)`` over replicate groups ``g``.
+    - **Lack of fit:** ``SS_LOF = RSS - SS_PE``, ``df_LOF = dof - df_PE``.
+    - **F-test:** ``F = MS_LOF / MS_PE`` with ``MS = SS / df``;
+      ``p = P(F_{df_LOF, df_PE} > F)``.
 
     Parameters
     ----------
@@ -45,6 +53,17 @@ def lack_of_fit(design: Design, response, model: Optional[Model] = None,
     ------
     ValueError
         If there are no replicate groups (no pure-error degrees of freedom).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> import pandas as pd
+    >>> fac = ed.full_factorial({"A": [-1, 1], "B": [-1, 1]})
+    >>> d = ed.Design(matrix=pd.concat([fac.matrix, fac.matrix], ignore_index=True),
+    ...               factors=list(fac.factors))
+    >>> lof = ed.lack_of_fit(d, (fac.matrix["A"] + fac.matrix["B"]).tolist() * 2)
+    >>> "pure_error" in set(lof["source"])
+    True
     """
     fit = fit_linear_model(design, response, model=model, blocks=blocks)
     _, _, drop = _resolve_blocks(design, blocks)

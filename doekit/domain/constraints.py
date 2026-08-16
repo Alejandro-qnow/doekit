@@ -11,12 +11,16 @@ import pandas as pd
 
 @dataclass
 class Constraints:
-    """Native constraint bundle for advise / optimal / sequential.
+    """Native constraint bundle for advise, optimal, and sequential workflows.
+
+    Flags steer design recommendation (mixture, split-plot, irregular region)
+    and optional row filtering via ``exclude``. Also inferred from factor types
+    when factors carry mixture or hard-to-change metadata.
 
     Parameters
     ----------
     mixture : bool, default False
-        Force mixture / simplex shortlist in the advisor (also inferred from
+        Prefer mixture / simplex designs in the advisor (also inferred from
         :class:`~doekit.domain.factors.MixtureFactor`).
     hard_to_change : sequence of str, optional
         Factor names that are hard to change → split-plot generation.
@@ -29,7 +33,14 @@ class Constraints:
         Applied when filtering candidate sets.
     irregular : bool, default False
         Irregular / non-rectangular region → prefer D-optimal over RSM templates.
-        Replaces the old ``constrained=True`` flag.
+        Replaces the legacy ``constrained=True`` flag.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> c = ed.Constraints(mixture=True)
+    >>> c.mixture
+    True
     """
 
     mixture: bool = False
@@ -44,16 +55,35 @@ class Constraints:
 
     @property
     def wants_split_plot(self) -> bool:
+        """Whether split-plot generation is requested."""
         return bool(self.split_plot or self.hard_to_change)
 
     def filter_frame(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Drop rows rejected by ``exclude`` (if any)."""
+        """Drop rows rejected by ``exclude`` (if any).
+
+        Parameters
+        ----------
+        df : DataFrame
+            Candidate run table.
+
+        Returns
+        -------
+        DataFrame
+            Filtered copy; unchanged when ``exclude`` is ``None``.
+        """
         if self.exclude is None or df.empty:
             return df
         keep = [not self.exclude(row) for _, row in df.iterrows()]
         return df.loc[keep].reset_index(drop=True)
 
     def to_dict(self) -> dict:
+        """Serialize constraints to a JSON-safe dict (``exclude`` as flag only).
+
+        Returns
+        -------
+        dict
+            Plain constraint fields; ``has_exclude`` indicates a callable.
+        """
         return {
             "mixture": bool(self.mixture),
             "hard_to_change": list(self.hard_to_change),
@@ -69,10 +99,33 @@ def coerce_constraints(
     *,
     constrained: bool = False,
 ) -> Constraints:
-    """Normalize ``constraints`` / legacy ``constrained`` into a :class:`Constraints`.
+    """Normalize ``constraints`` or legacy ``constrained`` into a :class:`Constraints`.
 
     ``constrained=True`` maps to ``Constraints(irregular=True)`` with a soft
     deprecation path for callers that still pass the boolean.
+
+    Parameters
+    ----------
+    constraints : Constraints, dict, or None, optional
+        Explicit constraints object or dict of field values.
+    constrained : bool, default False
+        Legacy flag equivalent to ``irregular=True``.
+
+    Returns
+    -------
+    Constraints
+        Normalized constraint bundle.
+
+    Raises
+    ------
+    TypeError
+        When ``constraints`` is neither :class:`Constraints`, dict, nor ``None``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.coerce_constraints({"mixture": True}).mixture
+    True
     """
     if constraints is None:
         if constrained:

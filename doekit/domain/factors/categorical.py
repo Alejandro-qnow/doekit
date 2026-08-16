@@ -12,7 +12,30 @@ from .protocols import Factor
 
 @dataclass
 class CategoricalFactor(Factor):
-    """Categorical factor: level <-> integer index ``0..k-1``."""
+    """Categorical factor with arbitrary level labels.
+
+    Encoding maps each level to an integer index ``0 .. k-1`` for dummy coding
+    in the model matrix; decoding maps indices back to level labels.
+
+    Parameters
+    ----------
+    name : str
+        Factor name.
+    levels : sequence
+        Category labels (at least two).
+
+    Raises
+    ------
+    ValueError
+        When fewer than two levels are given.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> f = ed.CategoricalFactor("cat", ["A", "B"])
+    >>> f.encode("B")
+    1
+    """
 
     name: str
     levels: Sequence[object]

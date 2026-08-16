@@ -20,6 +20,16 @@ from dataclasses import dataclass, field
 class FitResult:
     """Result of an OLS fit, with anomaly diagnostics.
 
+    Container for coefficient estimates, inferential statistics and per-run
+    influence measures. Serialize with :meth:`to_dict` / :meth:`from_dict` for
+    handoff to reports and agents.
+
+    Formulas
+    --------
+    - **R²:** ``1 - RSS / TSS`` where ``TSS = sum((y - ybar)^2)``.
+    - **Adjusted R²:** ``1 - (1 - R²) * (N - 1) / dof``.
+    - **Residual variance:** ``sigma2 = RSS / dof``.
+
     Attributes
     ----------
     names : list of str
@@ -77,12 +87,18 @@ class FitResult:
         })
 
     def anomalies(self) -> pd.DataFrame:
-        """Runs flagged as atypical / influential, with the reason.
+        """Runs flagged as atypical or influential, with the reason.
 
-        Rules: an *outlier* when ``|studentized residual| > 3``; *high leverage*
-        when ``h_ii > 2p/N``; *influential* when ``Cook's D > 1`` (Cook &
-        Weisberg absolute cutoff, robust for small designs — the ``4/N`` rule
-        over-flags in DoE, where points are deliberately high-leverage).
+        Combines three standard influence rules tuned for small DoE designs.
+        Returns an empty frame when leverage / studentized residuals were not
+        computed.
+
+        Formulas
+        --------
+        - **Outlier:** ``|r_i^*| > 3``.
+        - **High leverage:** ``h_ii > 2p / N``.
+        - **Influential:** ``Cook's D_i > 1`` (Cook & Weisberg absolute cutoff;
+          the ``4/N`` rule over-flags deliberately high-leverage DoE points).
 
         Returns
         -------
@@ -196,6 +212,14 @@ class FitResult:
 
 class MixedFitResult:
     """Result of a linear mixed model (REML / ML) fit.
+
+    Fixed-effect estimates with Wald statistics plus random-effect variance
+    components from statsmodels ``MixedLM``.
+
+    Formulas
+    --------
+    - **Wald z:** ``z_j = beta_j / SE(beta_j)``, ``p = 2 * Phi(-|z_j|)``.
+    - **Information criteria:** AIC/BIC from the fitted mixed-model likelihood.
 
     Attributes
     ----------

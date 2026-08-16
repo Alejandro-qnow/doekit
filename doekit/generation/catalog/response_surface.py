@@ -46,7 +46,10 @@ def _boxbehnken_coded(n: int, center: int) -> np.ndarray:
 
 def box_behnken(factors, center: Optional[int] = None,
                 model: Optional[Model] = None) -> Design:
-    """Box-Behnken design.
+    """Build a Box-Behnken response-surface design.
+
+    Three-level design on the edges of the hypercube (no corner runs), requiring
+    at least three factors. Center points improve pure-error estimation.
 
     Parameters
     ----------
@@ -62,12 +65,19 @@ def box_behnken(factors, center: Optional[int] = None,
     Returns
     -------
     Design
-        The Box-Behnken design (requires >= 3 factors).
+        Box-Behnken design (requires >= 3 factors).
 
     Raises
     ------
     ValueError
         If fewer than 3 factors are given.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.box_behnken(3)
+    >>> d.n_factors
+    3
     """
     names, facs = _resolve_factors(factors)
     n = len(names)
@@ -133,7 +143,15 @@ def _ccdesign_coded(n: int, center: Sequence[int], alpha: str, face: str) -> np.
 def central_composite(factors, center: Sequence[int] = (4, 4),
                       alpha: str = "orthogonal", face: str = "circumscribed",
                       model: Optional[Model] = None) -> Design:
-    """Central Composite design (CCD).
+    """Build a Central Composite design (CCD).
+
+    Combines a factorial block, star (axial) points, and center replicates.
+    ``alpha`` controls axial distance; ``face`` selects inscribed, faced, or
+    circumscribed placement.
+
+    Formulas
+    --------
+    Rotatable: ``alpha = 2^(k/4)``; orthogonal and faced rules as in Box & Wilson.
 
     Parameters
     ----------
@@ -151,13 +169,20 @@ def central_composite(factors, center: Sequence[int] = (4, 4),
     Returns
     -------
     Design
-        The CCD, with ``alpha_value``, ``alpha``, ``face`` and ``center`` in
+        CCD with ``alpha_value``, ``alpha``, ``face`` and ``center`` in
         ``metadata`` (requires >= 2 factors).
 
     Raises
     ------
     ValueError
         If fewer than 2 factors are given.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.central_composite(2)
+    >>> d.n_factors
+    2
     """
     names, facs = _resolve_factors(factors)
     n = len(names)

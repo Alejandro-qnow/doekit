@@ -111,11 +111,16 @@ def _next_hadamard_order(min_order: int) -> tuple[int, np.ndarray]:
 
 def plackett_burman(n_factors: int, names: Optional[list[str]] = None,
                     model: Optional[Model] = None) -> Design:
-    """Plackett-Burman design for ``n_factors`` factors.
+    """Build a Plackett-Burman screening design for ``n_factors`` factors.
 
-    Uses the smallest Hadamard matrix (Sylvester/Paley) with ``N-1 >= n_factors``.
-    Returns ``N`` runs and ``N-1`` columns: the first ``n_factors`` are the real
-    factors and the rest are *dummy* columns (possible interaction aliases).
+    Uses the smallest constructible Hadamard matrix (Sylvester/Paley) with
+    ``N-1 >= n_factors``. Returns ``N`` runs; surplus columns beyond
+    ``n_factors`` are dummy factors (possible alias sinks).
+
+    Formulas
+    --------
+    Design columns are zero-sum: ``sum_j d_ij = 0``; orthogonality:
+    ``D^T D = N I`` (Hadamard property).
 
     Parameters
     ----------
@@ -129,8 +134,15 @@ def plackett_burman(n_factors: int, names: Optional[list[str]] = None,
     Returns
     -------
     Design
-        The Plackett-Burman design, with ``order``, ``factors`` and
+        Plackett-Burman design with ``order``, ``factors`` and
         ``dummy_factors`` in ``metadata``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.plackett_burman(4)
+    >>> d.n_runs >= 4
+    True
     """
     order, H = _next_hadamard_order(n_factors + 1)
     # normalize: first column all +1 (intercept); use the rest as factors
@@ -157,13 +169,17 @@ def plackett_burman(n_factors: int, names: Optional[list[str]] = None,
 
 
 def is_plackett_burman(design, tol: float = 1e-8) -> bool:
-    """Check the Plackett-Burman properties of a design.
+    """Check whether a matrix satisfies Plackett-Burman defining properties.
 
     Requires the three defining PB properties (entrywise, not aggregate):
 
     1. entries are ``+/-1`` (balanced two-level design);
     2. **each** column sums to zero (``D.sum(axis=0) == 0``);
     3. columns are entrywise orthogonal: ``D^T D = N I``.
+
+    Formulas
+    --------
+    Orthogonality: ``D^T D = N I`` where ``N`` is the number of runs.
 
     Parameters
     ----------
@@ -176,6 +192,12 @@ def is_plackett_burman(design, tol: float = 1e-8) -> bool:
     -------
     bool
         Whether all three properties hold.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ed.is_plackett_burman(ed.plackett_burman(4))
+    True
     """
     D = design.matrix.to_numpy() if isinstance(design, Design) else np.asarray(design)
     D = D.astype(float)
@@ -187,10 +209,10 @@ def is_plackett_burman(design, tol: float = 1e-8) -> bool:
 
 
 def fold(design: Design) -> Design:
-    """Duplicate the design by appending its sign-reflected mirror (foldover).
+    """Duplicate a design by appending its sign-reflected mirror (foldover).
 
     Every interaction aliased with a main effect is de-confounded, raising the
-    resolution.
+    resolution of fractional factorials.
 
     Parameters
     ----------
@@ -200,7 +222,14 @@ def fold(design: Design) -> Design:
     Returns
     -------
     Design
-        The folded design (``2N`` runs).
+        Folded design with ``2N`` runs.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> d = ed.full_factorial(2)
+    >>> ed.fold(d).n_runs == 2 * d.n_runs
+    True
     """
     mirror = design.matrix * -1
     folded = pd.concat([design.matrix, mirror], ignore_index=True)
