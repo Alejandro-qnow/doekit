@@ -158,35 +158,6 @@ recupera el óptimo, y comparándolo contra un baseline:
 uv run pytest -q       # o: pytest -q
 ```
 
-## Publicación en PyPI
-
-El paquete usa `hatchling` con versión de fuente única (`__version__` en
-`doekit/__init__.py`):
-
-Los índices `testpypi` y `pypi` están configurados en `pyproject.toml`
-(`[[tool.uv.index]]`), así que los comandos son cortos:
-
-```bash
-uv build                                   # genera dist/*.whl y dist/*.tar.gz
-uvx twine check dist/*                     # valida que el README renderice
-uv publish --index testpypi --token pypi-<TOKEN_TESTPYPI>   # prueba en TestPyPI
-uv publish --token pypi-<TOKEN_PYPI>       # publicación en PyPI (índice por defecto)
-```
-
-Antes de publicar: actualizar `[CHANGELOG.md](CHANGELOG.md)` y verificar
-`pyproject.toml`. PyPI/TestPyPI no permiten re-subir una versión existente
-(ni reemplazar un wheel con otro hash).
-
-Atajo recomendado — el script limpia `dist/`, consulta el índice, hace
-**auto-bump de patch** si la versión ya existe, y reintenta si el publish
-choca por hash:
-
-```bash
-uv run --with tqdm --with python-dotenv python scripts/update_package.py          # TestPyPI
-uv run --with tqdm --with python-dotenv python scripts/update_package.py --prod   # PyPI
-uv run --with tqdm --with python-dotenv python scripts/update_package.py --bump   # forzar +0.0.1
-```
-
 ## Licencia
 
 MIT — ver `[LICENSE](LICENSE)`.

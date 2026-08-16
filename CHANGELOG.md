@@ -6,6 +6,12 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-08-10
+
+### Cambiado
+- README de PyPI: se quitó la sección de publicación de paquetes (flujo de
+  release solo en `CONTRIBUTING.md` para maintainers).
+
 ## [0.7.2] - 2026-08-10
 
 ### Añadido — workspace trazable de experimentos
