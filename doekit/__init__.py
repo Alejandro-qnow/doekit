@@ -35,6 +35,7 @@ from .assessment.analysis import (fit_linear_model, fit_mixed_model, main_effect
 from .assessment.evaluation import (evaluate, efficiencies, power_analysis, vif,
                                     alias_matrix, fds_data, DesignEvaluation)
 from .presentation.report import report_html as report, report_summary
+from .presentation.narrative import interpret, Interpretation
 from .orchestration.advise import recommend_design, Recommendation
 from .orchestration.sequential import (augment_design, propose_next_runs,
                                        compare_designs, NextRunsProposal,
@@ -81,7 +82,7 @@ __all__ = [
     "evaluate", "efficiencies", "power_analysis", "vif", "alias_matrix",
     "fds_data", "DesignEvaluation",
     # reporting
-    "report", "report_summary",
+    "report", "report_summary", "interpret", "Interpretation",
     # design advisor
     "recommend_design", "Recommendation",
     # sequential / adaptive
