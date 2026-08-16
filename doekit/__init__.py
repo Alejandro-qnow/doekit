@@ -40,6 +40,14 @@ from .orchestration.sequential import (augment_design, propose_next_runs,
                                        compare_designs, NextRunsProposal,
                                        DesignComparison)
 from .adapters.bo import candidates_from_bounds, candidates_from_skopt_space
+from .assessment.surrogate import (Surrogate, OLSSurrogate, fit_surrogate,
+                                   loo_calibration)
+from .orchestration.optimize import (expected_improvement,
+                                     probability_of_improvement,
+                                     upper_confidence_bound,
+                                     expected_hypervolume_improvement,
+                                     get_acquisition, pareto_front, pareto_mask,
+                                     dominates, hypervolume)
 from .orchestration.experiment import Experiment, experiment, desirability_scores
 from .presentation.export import run_sheet, export_csv, export_excel
 from .presentation.workspace import (
@@ -81,6 +89,13 @@ __all__ = [
     "NextRunsProposal", "DesignComparison",
     # BO bridge
     "candidates_from_bounds", "candidates_from_skopt_space",
+    # surrogate models (optimize intent)
+    "Surrogate", "OLSSurrogate", "GPSurrogate", "fit_surrogate",
+    "loo_calibration",
+    # acquisition / pareto
+    "expected_improvement", "probability_of_improvement",
+    "upper_confidence_bound", "expected_hypervolume_improvement",
+    "get_acquisition", "pareto_front", "pareto_mask", "dominates", "hypervolume",
     # experiment aggregate
     "Experiment", "experiment", "desirability_scores",
     # experiment workspace (traceable project → waves)
@@ -91,3 +106,12 @@ __all__ = [
     # plotting (optional matplotlib)
     "plotting",
 ]
+
+
+def __getattr__(name):
+    # Lazy: GPSurrogate pulls scikit-learn only when actually referenced, so a
+    # bare ``import doekit`` never requires the optional ``doekit[bo]`` extra.
+    if name == "GPSurrogate":
+        from .assessment.surrogate import GPSurrogate  # noqa: PLC0415
+        return GPSurrogate
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

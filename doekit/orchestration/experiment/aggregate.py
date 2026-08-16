@@ -203,12 +203,22 @@ class Experiment:
             des = {"mean": float(d.mean()), "min": float(d.min()), "max": float(d.max())}
         return {"per_response": per, "note": note, "desirability": des}
 
-    def next(self, n_add: int = 4, **kwargs) -> NextRunsProposal:
-        """Propose the next batch of runs (uses primary ingested response)."""
+    def next(self, n_add: int = 4, *, intent: str = "learn",
+             **kwargs) -> NextRunsProposal:
+        """Propose the next batch of runs.
+
+        ``intent="learn"`` (default) augments for information using the primary
+        response; ``intent="optimize"`` fits a surrogate and proposes runs that
+        move the result, using **all** ingested responses for multi-objective.
+        """
         if self.response is None:
             raise ValueError("call ingest(y) before next()")
-        return propose_next_runs(self.design, response=self.response,
-                                 n_add=n_add, model=self.model, **kwargs)
+        resp = self.response
+        if (intent == "optimize" and self.responses is not None
+                and self.responses.shape[1] > 1):
+            resp = self.responses
+        return propose_next_runs(self.design, response=resp, n_add=n_add,
+                                 model=self.model, intent=intent, **kwargs)
 
     def compare(self, n_add: int = 4, **kwargs) -> DesignComparison:
         """Ask whether ``n_add`` more runs are worth it (via propose + compare)."""

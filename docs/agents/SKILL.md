@@ -4,8 +4,10 @@ description: >-
   Runs Design-of-Experiments with doekit: brief → recommend → evaluate → lab
   matrix → ingest responses → analyze → next runs. Use for screening, RSM,
   optimal designs, design quality (D/A/G, FDS, power, VIF, aliases), sequential
-  augmentation, mixed/blocked analysis, mixture or split-plot, or iterative
-  experimental research (diseño de experimentos, criba, how many runs).
+  augmentation, response optimization (surrogate + acquisition: EI/UCB/EHVI,
+  single or multi-objective/Pareto), mixed/blocked analysis, mixture or
+  split-plot, or iterative experimental research (diseño de experimentos, criba,
+  how many runs, bayesian optimization, optimize the yield).
 ---
 
 # doekit Experiment Designer
@@ -53,6 +55,10 @@ nxt = exp.next(n_add=4)          # after ingest
 print(nxt.comparison.summary)
 
 snap = exp.to_dict()             # persist / handoff (doekit.Experiment/1)
+
+# Two intents share one call — pick by what the user wants next:
+nxt = exp.next(n_add=4)                       # learn (default): sharpen the MODEL (D/I)
+nxt = exp.next(n_add=4, intent="optimize")    # optimize: move the RESULT (surrogate+EI)
 ```
 
 Escape hatches (see [reference.md](reference.md)): user already chose a generator
@@ -91,11 +97,47 @@ Pause until the user provides responses. Do not invent `y`.
 | Signal | Action |
 |--------|--------|
 | Goal met / no budget / user stops | Optional `exp.report(...)`; stop |
-| Weak precision/power, budget left, same region | `exp.next(n_add=…)` / `propose_next_runs`; show Δ; new matrix |
+| Weak precision/power, budget left, same region | `exp.next(n_add=…)` (learn) / `propose_next_runs`; show Δ; new matrix |
+| Goal is to **maximize/minimize the response** (not model precision) | `exp.next(intent="optimize")`; read `best_so_far`, `predicted_improvement`, `explore_exploit` |
 | Wrong factors/region, mixture/model mismatch, strong LOF vs assumption | Redesign (`from_goal` / new design) — do not silently augment |
 | Aliases / resolution limits | Do not overclaim effects; say what is confounded |
 
 Argue “N more runs?” only with `compare_designs` / `nxt.comparison` deltas.
+
+## Intent: learn vs optimize
+
+One parameter, two intentions. Choose by the user's next question, not by habit.
+
+| | `intent="learn"` (default) | `intent="optimize"` |
+|--|--|--|
+| Question | "Which factors / how precise?" | "Where is the best setting?" |
+| Engine | D/I-optimal augmentation | Surrogate (GP prior-mean = OLS) + acquisition |
+| Reads | `comparison` deltas | `best_so_far`, `predicted_improvement`, `pareto_front`, `explore_exploit` |
+
+```python
+# single objective
+nxt = exp.next(n_add=4, intent="optimize", acquisition="ei")   # or "ucb" / "pi"
+print(nxt.best_so_far, nxt.explore_exploit["mode"])            # exploring/exploiting/balanced
+
+# multi-objective (Pareto / EHVI)
+exp.ingest({"yield": y1, "cost": y2})
+nxt = exp.next(n_add=4, intent="optimize",
+               goals={"yield": "max", "cost": "min"})           # acquisition defaults to "ehvi"
+print(nxt.pareto_front)
+```
+
+**Trust before you claim an optimum.** The surrogate exposes calibrated `sigma(x)`
+— audit it, don't assume it:
+
+```python
+sur = nxt.surrogate                 # or ed.fit_surrogate(design, y)
+sur.calibration()                   # LOO interval coverage vs nominal
+```
+
+If LOO coverage is far below nominal (over-confident) or data is scarce, prefer
+`learn` first / gather more runs before trusting `best_so_far`. Backend is GP with
+`doekit[bo]` (scikit-learn), else the dependency-free `OLSSurrogate` — a `caveat`
+says which.
 
 ## Resume
 
@@ -116,4 +158,8 @@ Read `automatic-conclusions/conclusions.json` for `gate_board` / `rules`; paraph
 - Prefer `Experiment` aggregate; call primitives only when needed.
 - Always `evaluate` before declaring a plan fit-for-purpose.
 - Prefer `Constraints(...)` over deprecated `constrained=True`.
+- For `intent="optimize"`: read `surrogate.calibration()` before trusting
+  `best_so_far`; never present a surrogate optimum as certain when coverage is poor.
+- Facts from doekit (`best_so_far`, `pareto_front`, `explore_exploit`, `calibration`);
+  never invent an optimum, an acquisition value, or a Pareto point.
 - API detail: [reference.md](reference.md).
