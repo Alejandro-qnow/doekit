@@ -6,6 +6,38 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-16
+
+### Añadido — loop de optimización secuencial (surrogate + adquisición)
+- **`intent="optimize"`** en **`propose_next_runs`** / **`Experiment.next`**: cierra
+  el loop hacia el óptimo (mover el *resultado*), complementando el `intent="learn"`
+  clásico (augmentación D/I-óptima; comportamiento **sin cambios**, con test de
+  no-regresión). Selección de lote por *constant-liar* (Kriging Believer),
+  candidatos continuos y factibles en el símplex.
+- **`doekit.assessment.surrogate`**: `Surrogate` (protocolo `predict → (mean, std)`,
+  `calibration`), **`OLSSurrogate`** (backend por defecto, sin dependencias) y
+  **`GPSurrogate`** (GP con *media a priori = la superficie OLS*; requiere
+  `doekit[bo]`). `σ(x)` combina SE del trend + posterior GP + ruido y crece lejos de
+  los datos; **cobertura LOO** de intervalos para auditar la caja. Fábrica
+  **`fit_surrogate`**.
+- **`doekit.orchestration.optimize`**: adquisiciones **`expected_improvement`**,
+  **`upper_confidence_bound`**, **`probability_of_improvement`** y
+  **`expected_hypervolume_improvement`** (EHVI, multi-objetivo) + utilidades de
+  Pareto (**`pareto_front`**, **`pareto_mask`**, **`dominates`**, **`hypervolume`**)
+  y **`get_acquisition`**. Multi-objetivo con `goals={col: "max"|"min"}`.
+- **`NextRunsProposal`** gana campos serializables: `intent`, `acquisition`,
+  `best_so_far`, `predicted_improvement`, `pareto_front`, `explore_exploit`,
+  `surrogate` (resumen con calibración en `to_dict`).
+- **Gráficas** (`ed.plotting`): `surrogate_surface`, `acquisition_plot`,
+  `convergence_plot`, `parity_plot`, `calibration_plot`, `pareto_plot`,
+  `slice_plot`; `fds_plot` acepta `surrogate=` para `σ(x)`.
+- Notebook **`11_optimizacion_surrogate.ipynb`** (extiende el caso de química del
+  nb 04) y skill/reference de agentes con la decisión learn-vs-optimize.
+
+### Cambiado
+- Extra **`bo`** ahora incluye `scikit-learn>=1.1` (para `GPSurrogate`). Las nuevas
+  APIs se exportan de forma perezosa: `import doekit` no requiere scikit-learn.
+
 ## [0.7.3] - 2026-08-10
 
 ### Cambiado
