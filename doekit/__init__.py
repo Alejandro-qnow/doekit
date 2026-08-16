@@ -36,7 +36,9 @@ from .assessment.evaluation import (evaluate, efficiencies, power_analysis, vif,
                                     alias_matrix, fds_data, DesignEvaluation)
 from .presentation.report import report_html as report, report_summary
 from .presentation.narrative import interpret, Interpretation
-from .orchestration.advise import recommend_design, Recommendation
+from .orchestration.advise import (recommend_design, Recommendation,
+                                   ExperimentHistory, ExperimentRecord,
+                                   learn_priors, historical_recommendation)
 from .orchestration.sequential import (augment_design, propose_next_runs,
                                        compare_designs, NextRunsProposal,
                                        DesignComparison)
@@ -91,6 +93,9 @@ __all__ = [
     "report", "report_summary", "interpret", "Interpretation",
     # design advisor
     "recommend_design", "Recommendation",
+    # meta-learning from history (priors + advice)
+    "ExperimentHistory", "ExperimentRecord", "learn_priors",
+    "historical_recommendation",
     # sequential / adaptive
     "augment_design", "propose_next_runs", "compare_designs",
     "NextRunsProposal", "DesignComparison",
