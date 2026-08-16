@@ -39,7 +39,7 @@ class SemanticResult:
         warnings: Lista de advertencias o caveats importantes
         recommendations: Lista de acciones recomendadas
         confidence_level: Nivel de confianza cualitativo con explicación
-        prompt_injection: Texto estructurado listo para inyectar en contexto LLM
+        context_addition: Texto estructurado listo para inyectar en contexto LLM
         metadata: Información adicional (timestamp, función origen, etc.)
 
     Example:
@@ -52,7 +52,7 @@ class SemanticResult:
         ...     warnings=["Saturación cercana - considerar más corridas si posible"],
         ...     recommendations=["Proceder con diseño actual", "Re-evaluar después de primera wave"],
         ...     confidence_level="Moderada - basada en trade-off entre costo y precisión",
-        ...     prompt_injection="...",
+        ...     context_addition="...",
         ...     metadata={"function": "recommend_design", "timestamp": "2026-08-13T..."}
         ... )
 
@@ -75,7 +75,7 @@ class SemanticResult:
     confidence_level: str = ""
 
     # HÍBRIDO
-    prompt_injection: str = ""
+    context_addition: str = ""
 
     # METADATOS
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -92,9 +92,9 @@ class SemanticResult:
         if not self.reasoning:
             raise ValueError("reasoning es requerido")
 
-        # Auto-generar prompt_injection si está vacío
-        if not self.prompt_injection:
-            self.prompt_injection = self._auto_generate_prompt()
+        # Auto-generar context_addition si está vacío
+        if not self.context_addition:
+            self.context_addition = self._auto_generate_prompt()
 
     def _auto_generate_prompt(self) -> str:
         """Genera prompt básico si no se provee uno personalizado"""
@@ -143,7 +143,7 @@ class SemanticResult:
                 "recommendations": list(self.recommendations),
                 "confidence_level": self.confidence_level
             },
-            "prompt_injection": self.prompt_injection,
+            "context_addition": self.context_addition,
             "metadata": dict(self.metadata)
         }
 
@@ -175,13 +175,13 @@ class SemanticResult:
             warnings=semantic.get("warnings", []),
             recommendations=semantic.get("recommendations", []),
             confidence_level=semantic.get("confidence_level", ""),
-            prompt_injection=data.get("prompt_injection", ""),
+            context_addition=data.get("context_addition", ""),
             metadata=data.get("metadata", {})
         )
 
     def __str__(self) -> str:
         """Representación legible"""
-        return self.prompt_injection
+        return self.context_addition
 
     def __repr__(self) -> str:
         """Representación para debugging"""
@@ -394,7 +394,7 @@ def interpret_result(
         >>> from doekit_enhanced.semantic import interpret_result
         >>> rec = ed.recommend_design(goal="optimization", factors=3)
         >>> semantic = interpret_result(rec)
-        >>> print(semantic.prompt_injection)
+        >>> print(semantic.context_addition)
     """
     return _global_registry.interpret(result, context)
 

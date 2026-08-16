@@ -52,7 +52,7 @@ print(proposal.comparison.delta)     # {'D_efficiency': 12.3, ...}
         "recommendations": [...], # Sugerencias accionables
         "confidence": "..."       # Nivel de confianza en lenguaje natural
     },
-    "prompt_injection": "..."     # Texto listo para inyectar en contexto LLM
+    "context_addition": "..."     # Texto listo para inyectar en contexto LLM
 }
 ```
 
@@ -90,7 +90,7 @@ proposal.comparison.worth_it  # True
         ],
         "confidence": "Alta (score/threshold ratio = 1.31). Decisión robusta incluso bajo incertidumbre moderada."
     },
-    "prompt_injection": """
+    "context_addition": """
 DECISIÓN DE EXPERIMENTACIÓN:
 Recomendación: CONTINUAR con 4 experimentos adicionales.
 Confianza: Alta (131% sobre umbral mínimo).
@@ -147,7 +147,7 @@ convergence_check = ed.check_convergence(experiment_history)
         ],
         "confidence": "Alta. Convergencia confirmada por múltiples indicadores: R², mejora marginal, estabilidad de coeficientes."
     },
-    "prompt_injection": """
+    "context_addition": """
 ESTADO DE CONVERGENCIA:
 Estatus: CONVERGIDO - Experimentación adicional no justificada.
 Confianza: Alta (múltiples indicadores concordantes).
@@ -283,7 +283,7 @@ class Decision:
     confidence_explanation: str
     
     # Prompt-ready
-    prompt_injection: str
+    context_addition: str
     
     # Alternativas
     alternatives: list['Decision']
@@ -326,7 +326,7 @@ class SemanticInterpreter(ABC):
         pass
     
     @abstractmethod
-    def build_prompt_injection(self, numerical: dict, semantic: dict) -> str:
+    def build_context_addition(self, numerical: dict, semantic: dict) -> str:
         """Construye texto listo para inyectar en contexto LLM"""
         pass
 
@@ -391,7 +391,7 @@ class EfficiencyInterpreter(SemanticInterpreter):
             f"DOF = {n_runs - n_params}."
         )
     
-    def build_prompt_injection(self, numerical: dict, semantic: dict) -> str:
+    def build_context_addition(self, numerical: dict, semantic: dict) -> str:
         return f"""
 EVALUACIÓN DE CALIDAD DEL DISEÑO EXPERIMENTAL:
 
@@ -556,7 +556,7 @@ class SemanticResult:
     warnings: list[str]
     recommendations: list[str]
     confidence: str
-    prompt_injection: str
+    context_addition: str
     metadata: dict
     
     def to_dict(self) -> dict:
@@ -571,7 +571,7 @@ class SemanticResult:
                 "recommendations": self.recommendations,
                 "confidence": self.confidence
             },
-            "prompt_injection": self.prompt_injection,
+            "context_addition": self.context_addition,
             "metadata": self.metadata
         }
     
@@ -621,7 +621,7 @@ class RecommendationInterpreter(SemanticInterpreter):
             warnings=warnings,
             recommendations=recommendations,
             confidence=confidence,
-            prompt_injection=prompt,
+            context_addition=prompt,
             metadata={"function": "recommend_design"}
         )
     
@@ -803,11 +803,11 @@ def test_recommendation_interpreter():
     assert rec.interpretation != ""
     assert rec.reasoning != ""
     assert len(rec.warnings) > 0
-    assert rec.prompt_injection != ""
+    assert rec.context_addition != ""
     
     # Validar que prompt es útil para LLM
-    assert "RECOMENDACIÓN" in rec.prompt_injection
-    assert str(rec.numerical.design.n_runs) in rec.prompt_injection
+    assert "RECOMENDACIÓN" in rec.context_addition
+    assert str(rec.numerical.design.n_runs) in rec.context_addition
 
 def test_backward_compatibility():
     """Asegurar que funciona sin include_semantics"""
@@ -1041,7 +1041,7 @@ class ThresholdPolicy(DecisionPolicy):
             warnings=self._generate_warnings(score, proposal),
             recommendations=self._generate_recommendations(action, score, proposal),
             confidence_explanation=self._explain_confidence(score),
-            prompt_injection=self._build_prompt(action, score, proposal, context),
+            context_addition=self._build_prompt(action, score, proposal, context),
             alternatives=self._generate_alternatives(score, proposal, context)
         )
     
@@ -1238,7 +1238,7 @@ def decide_next_action(
         include_semantics: Si incluir capa semántica completa
     
     Returns:
-        Decision con action, confidence, semantic fields, prompt_injection
+        Decision con action, confidence, semantic fields, context_addition
     
     Example:
         >>> decision = ed.decide_next_action(
@@ -1249,7 +1249,7 @@ def decide_next_action(
         ...     wave_number=2
         ... )
         >>> print(decision.action)  # "continue" or "stop"
-        >>> print(decision.prompt_injection)  # Texto listo para LLM
+        >>> print(decision.context_addition)  # Texto listo para LLM
         >>> if decision.action == "continue":
         ...     next_runs = decision.expected_gain["next_runs_matrix"]
         ...     execute_experiments(next_runs)
@@ -1306,7 +1306,7 @@ def test_decision_with_clear_improvement():
     
     assert decision.action == "continue"
     assert decision.confidence > 0.5
-    assert "continue" in decision.prompt_injection.lower()
+    assert "continue" in decision.context_addition.lower()
     assert len(decision.recommendations) > 0
 
 def test_decision_with_no_improvement():
@@ -1324,7 +1324,7 @@ def test_decision_with_no_improvement():
     )
     
     assert decision.action == "stop"
-    assert "stop" in decision.prompt_injection.lower()
+    assert "stop" in decision.context_addition.lower()
 
 def test_semantic_output_completeness():
     """Validar que salida semántica está completa"""
@@ -1346,18 +1346,18 @@ def test_semantic_output_completeness():
     assert decision.context != ""
     assert isinstance(decision.warnings, list)
     assert isinstance(decision.recommendations, list)
-    assert decision.prompt_injection != ""
+    assert decision.context_addition != ""
     
     # Validar que prompt es útil para LLM
-    assert "DECISIÓN" in decision.prompt_injection
-    assert decision.action.upper() in decision.prompt_injection
-    assert str(decision.confidence) in decision.prompt_injection
+    assert "DECISIÓN" in decision.context_addition
+    assert decision.action.upper() in decision.context_addition
+    assert str(decision.confidence) in decision.context_addition
 ```
 
 **Métricas de validación**:
 - API `decide_next_action()` funciona en 100% de casos de test
 - Decisiones son reproducibles (mismo input → mismo output)
-- Prompt injection contiene toda información relevante
+- Context addition contiene toda información relevante
 - Performance: < 100ms overhead vs `propose_next_runs()` actual
 
 ---
@@ -1742,7 +1742,7 @@ class IncrementalExperiment:
                 warnings=[],
                 recommendations=conv_check["recommendations"],
                 confidence_explanation=conv_check["confidence_explanation"],
-                prompt_injection=conv_check["prompt_injection"],
+                context_addition=conv_check["context_addition"],
                 alternatives=[]
             )
             
@@ -1909,7 +1909,7 @@ class ConvergenceChecker(ABC):
                 "reasoning": str,
                 "recommendations": list[str],
                 "confidence_explanation": str,
-                "prompt_injection": str
+                "context_addition": str
             }
         """
         pass
@@ -2039,7 +2039,7 @@ RECOMENDACIONES:
             "reasoning": reasoning,
             "recommendations": recommendations,
             "confidence_explanation": "Alta - múltiples criterios concuerdan",
-            "prompt_injection": prompt
+            "context_addition": prompt
         }
     
     def _not_converged(self, reason: str, details: str) -> dict:
@@ -2050,7 +2050,7 @@ RECOMENDACIONES:
             "reasoning": details,
             "recommendations": ["Continuar experimentación"],
             "confidence_explanation": "",
-            "prompt_injection": f"NO CONVERGIDO: {reason}. {details}"
+            "context_addition": f"NO CONVERGIDO: {reason}. {details}"
         }
     
     def _explain_why_not_converged(
@@ -2682,7 +2682,7 @@ jobs:
 
 #### Fase 1: Semántica
 - [ ] 100% de funciones críticas tienen interpretación semántica
-- [ ] Prompt injection contiene toda info relevante (validación manual)
+- [ ] Context addition contiene toda info relevante (validación manual)
 - [ ] Backward compatibility: 0 tests rotos
 - [ ] Performance overhead < 5%
 
@@ -2813,7 +2813,7 @@ class AutonomousExperimentAgent:
         )
         
         # Imprimir razonamiento
-        print(f"\n[Diseño Inicial]\n{rec.prompt_injection}")
+        print(f"\n[Diseño Inicial]\n{rec.context_addition}")
         
         # 3. Experimentación incremental con decisión autónoma
         exp = ed.IncrementalExperiment(

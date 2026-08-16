@@ -71,7 +71,7 @@ class TestPolicies:
         decision = ThresholdPolicy().decide(ctx, score)
         assert decision.action in ["continue", "refine_model", "stop"]
         assert 0.0 <= decision.confidence <= 1.0
-        assert len(decision.prompt_injection) > 30
+        assert len(decision.context_addition) > 30
 
     def test_risk_adaptive_policy_low_vs_high(self):
         base_metrics = {
@@ -141,7 +141,7 @@ class TestEndToEndWithDoekit:
         assert decision.score is not None
         assert hasattr(decision.score, "composite")
         assert len(decision.reasoning) > 20
-        assert len(decision.prompt_injection) > 60
+        assert len(decision.context_addition) > 60
 
 
 if __name__ == "__main__":

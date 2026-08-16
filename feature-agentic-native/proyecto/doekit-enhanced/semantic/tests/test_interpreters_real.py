@@ -422,7 +422,7 @@ Confianza: {semantic.confidence_level}
         semantic = interpret_result(evaluation)
 
         # 4. Tomar decisión basada en interpretación
-        decision_prompt = semantic.prompt_injection
+        decision_prompt = semantic.context_addition
 
         # Validar workflow
         assert len(decision_prompt) > 50

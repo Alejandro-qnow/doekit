@@ -40,7 +40,7 @@ result = SemanticResult(
 print(result.interpretation)
 # > "Diseño aceptable dado presupuesto limitado de 20 corridas"
 
-print(result.prompt_injection)
+print(result.context_addition)
 # > Texto estructurado completo listo para LLM
 
 # Serializar
@@ -269,7 +269,7 @@ class RecommendationInterpreter(SemanticInterpreter):
             warnings=warnings,
             recommendations=recs,
             confidence_level=self._assess_confidence(table),
-            prompt_injection=prompt,
+            context_addition=prompt,
             metadata={"function": "recommend_design", "method": method}
         )
     
@@ -325,7 +325,7 @@ RECOMENDACIONES:
 # rec = ed.recommend_design(goal="optimization", factors=3, budget=20)
 # interpreter = RecommendationInterpreter()
 # semantic = interpreter.interpret(rec)
-# print(semantic.prompt_injection)
+# print(semantic.context_addition)
 ```
 
 ## 6. Serialización y Persistencia
@@ -379,7 +379,7 @@ semantic_result = SemanticResult(
 agent_prompt = f"""
 Tarea: Decidir si continuar experimentación.
 
-{semantic_result.prompt_injection}
+{semantic_result.context_addition}
 
 Basándote en la información anterior, ¿cuál es tu decisión y por qué?
 Responde en formato: DECISIÓN: [continuar/detener] | JUSTIFICACIÓN: [tu razonamiento]
@@ -436,7 +436,7 @@ class TestCustomInterpreter:
         assert semantic.reasoning != ""
         assert isinstance(semantic.warnings, list)
         assert isinstance(semantic.recommendations, list)
-        assert semantic.prompt_injection != ""
+        assert semantic.context_addition != ""
     
     def test_serialization(self):
         interpreter = MyCustomInterpreter()
@@ -486,7 +486,7 @@ def new_function(...) -> SemanticResult:
 # Uso
 result = new_function()
 numbers = result.numerical  # Si se necesita
-prompt = result.prompt_injection  # Para LLM
+prompt = result.context_addition  # Para LLM
 ```
 
 ---

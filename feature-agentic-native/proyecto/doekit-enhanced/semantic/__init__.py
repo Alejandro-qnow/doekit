@@ -22,7 +22,7 @@ Example:
     >>>
     >>> # Usar para razonamiento
     >>> print(semantic.interpretation)
-    >>> print(semantic.prompt_injection)  # Listo para LLM
+    >>> print(semantic.context_addition)  # Listo para LLM
 
 Theory:
     Basado en principios de:

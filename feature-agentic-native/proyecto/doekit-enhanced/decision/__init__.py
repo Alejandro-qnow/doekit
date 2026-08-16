@@ -126,7 +126,7 @@ def decide_next_action(
                 0,
                 "Detener expansion del diseno por criterio de convergencia",
             )
-            decision.prompt_injection = decision._build_prompt()
+            decision.context_addition = decision._build_prompt()
 
     if diagnostics_report is not None:
         issues = getattr(diagnostics_report, "issues", []) or []
@@ -155,7 +155,7 @@ def decide_next_action(
                 0,
                 "Resolver issues bloqueantes antes de nuevas corridas",
             )
-            decision.prompt_injection = decision._build_prompt()
+            decision.context_addition = decision._build_prompt()
 
     decision.metadata.setdefault("scorer", type(scorer).__name__)
     decision.metadata.setdefault("policy", type(policy).__name__)

@@ -49,7 +49,7 @@ print(semantic.interpretation)
 print(semantic.reasoning)
 # > "D-optimal fue seleccionado porque balancea óptimamente eficiencia y presupuesto..."
 
-print(semantic.prompt_injection)  # Listo para inyectar en LLM
+print(semantic.context_addition)  # Listo para inyectar en LLM
 ```
 
 **Componentes**:
@@ -83,7 +83,7 @@ decision = decide_next_action(ctx)
 print(decision.action)  # "continue" | "stop" | "refine_model"
 print(decision.confidence)  # 0.85
 print(decision.score.composite)  # 0.72
-print(decision.prompt_injection)  # Explicación completa
+print(decision.context_addition)  # Explicación completa
 ```
 
 Incluye:
@@ -272,7 +272,7 @@ result = SemanticResult(
     recommendations=["Proceder con diseño actual", "Monitorear R² después de primera wave"]
 )
 
-print(result.prompt_injection)  # Texto estructurado para LLM
+print(result.context_addition)  # Texto estructurado para LLM
 ```
 
 ### Ejemplo 2: Interpretador Personalizado
@@ -430,7 +430,7 @@ semantic = interpret_result(experiment_result)
 agent_prompt = f"""
 Tarea: Decidir próxima acción experimental.
 
-{semantic.prompt_injection}
+{semantic.context_addition}
 
 ¿Cuál es tu decisión?
 """

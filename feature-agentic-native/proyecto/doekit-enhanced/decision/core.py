@@ -52,7 +52,7 @@ class Decision:
     reasoning: str
     recommendations: List[str] = field(default_factory=list)
 
-    prompt_injection: str = ""
+    context_addition: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -61,8 +61,8 @@ class Decision:
         if "timestamp" not in self.metadata:
             self.metadata["timestamp"] = datetime.now().isoformat()
 
-        if not self.prompt_injection:
-            self.prompt_injection = self._build_prompt()
+        if not self.context_addition:
+            self.context_addition = self._build_prompt()
 
     def _build_prompt(self) -> str:
         lines = [

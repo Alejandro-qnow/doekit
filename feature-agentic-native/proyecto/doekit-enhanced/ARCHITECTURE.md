@@ -101,7 +101,7 @@ class SemanticResult:
     warnings: list[str]         # Qué considerar
     recommendations: list[str]  # Qué hacer
     confidence_level: str       # Cuánta certeza
-    prompt_injection: str       # Listo para LLM
+    context_addition: str       # Listo para LLM
 ```
 
 ## Orden de Implementación
@@ -155,7 +155,7 @@ from doekit_enhanced.semantic import SemanticInterpreter
 rec = ed.recommend_design(goal="optimization", factors=3)
 interpreter = RecommendationInterpreter()
 semantic_result = interpreter.interpret(rec)
-print(semantic_result.prompt_injection)
+print(semantic_result.context_addition)
 ```
 
 ## Versionado

@@ -45,7 +45,7 @@ class TestSemanticResultBasic:
         assert result.context == "Test context"
         assert isinstance(result.warnings, list)
         assert isinstance(result.recommendations, list)
-        assert result.prompt_injection != ""  # Auto-generado
+        assert result.context_addition != ""  # Auto-generado
         assert "timestamp" in result.metadata  # Auto-agregado
 
     def test_semantic_result_validation_fails_without_required(self):
@@ -76,7 +76,7 @@ class TestSemanticResultBasic:
             confidence_level="High"
         )
 
-        prompt = result.prompt_injection
+        prompt = result.context_addition
 
         # Validar estructura
         assert "INTERPRETACIÓN:" in prompt
@@ -110,7 +110,7 @@ class TestSemanticResultBasic:
         # Validar estructura
         assert "numerical" in data
         assert "semantic" in data
-        assert "prompt_injection" in data
+        assert "context_addition" in data
         assert "metadata" in data
 
         # Deserializar
@@ -443,8 +443,8 @@ class TestIntegrationWithDoekitWorkflow:
         assert semantic.numerical.design.n_runs == rec.design.n_runs
 
         # 5. Verificar que prompt es útil
-        assert rec.method in semantic.prompt_injection
-        assert str(rec.design.n_runs) in semantic.prompt_injection
+        assert rec.method in semantic.context_addition
+        assert str(rec.design.n_runs) in semantic.context_addition
 
     def test_full_workflow_evaluate_to_semantic(self):
         """Test: Workflow desde evaluate hasta semantic"""

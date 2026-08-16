@@ -129,7 +129,7 @@ class SemanticResult:
     confidence_level: str       # Alta/Moderada/Baja con explicación
     
     # HÍBRIDO (para LLMs)
-    prompt_injection: str       # Texto estructurado combinando todo
+    context_addition: str       # Texto estructurado combinando todo
     
     # METADATOS
     metadata: dict              # Info adicional (función origen, timestamp, etc.)
@@ -139,7 +139,7 @@ class SemanticResult:
 
 1. **`numerical` preservado**: Backward compatibility total
 2. **Campos semánticos separados**: Facilita procesamiento individual
-3. **`prompt_injection` pre-construido**: Optimización - no construir cada vez
+3. **`context_addition` pre-construido**: Optimización - no construir cada vez
 4. **Metadatos extensibles**: Permite rastreo y debugging
 
 ### 3.3 Interpretadores Especializados
@@ -371,11 +371,11 @@ Una interpretación semántica es **buena** si:
 ```python
 rec = ed.recommend_design(goal="optimization", factors=3, include_semantics=True)
 
-# Agente lee prompt_injection
+# Agente lee context_addition
 agent_context = f"""
 Tarea: Diseñar experimento de optimización.
 
-{rec.prompt_injection}
+{rec.context_addition}
 
 Decisión requerida: ¿Proceder con este diseño?
 """
