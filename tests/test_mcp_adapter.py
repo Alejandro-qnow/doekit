@@ -51,6 +51,7 @@ def test_tool_propose_and_decide_learn():
     assert out["n_added"] == 3
     assert out["decision"]["schema"] == "doekit.Decision/1"
     assert out["decision"]["action"] in {"augment", "refine", "stop", "redesign"}
+    assert "calibration" not in out  # learn carries no surrogate to audit
     json.dumps(out)
 
 
@@ -62,6 +63,11 @@ def test_tool_propose_and_decide_optimize():
     assert out["intent"] == "optimize"
     assert out["interpretation"]["facts"]["intent"] == "optimize"
     assert "decision" in out
+    # surrogate="auto" → GP when doekit[bo] is installed, else OLS; either way the
+    # calibration audit rides along so an agent can vet sigma(x) before best_so_far.
+    cal = out["calibration"]
+    assert cal["kind"] in {"GPSurrogate", "OLSSurrogate"}
+    assert "coverage" in cal and "rmse_standardized" in cal
     json.dumps(out)
 
 

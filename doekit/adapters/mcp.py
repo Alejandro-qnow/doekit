@@ -42,6 +42,25 @@ def _factor_dict(factors: dict) -> dict:
     return out
 
 
+def _surrogate_calibration(surrogate) -> Optional[dict]:
+    """LOO calibration summary for an optimize surrogate (None if unavailable).
+
+    Audits whether ``sigma(x)`` is trustworthy before an agent believes
+    ``best_so_far``. Guarded: learn proposals carry no surrogate, and OLS/GP
+    calibration can fail on degenerate data — never break the tool over it.
+    """
+    if surrogate is None:
+        return None
+    try:
+        cal = surrogate.calibration()
+    except Exception:  # pragma: no cover - calibration is best-effort
+        return None
+    return {
+        "kind": getattr(surrogate, "kind", type(surrogate).__name__),
+        **cal,
+    }
+
+
 def _model_for(names, model_order: str):
     if model_order == "quadratic":
         return ed.Model.full_quadratic(list(names))
@@ -117,14 +136,15 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
     if acquisition is not None:
         kwargs["acquisition"] = acquisition
     if intent == "optimize":
-        kwargs["surrogate"] = "ols"
+        # GP surrogate when doekit[bo] (scikit-learn) is installed, else OLS.
+        kwargs["surrogate"] = "auto"
     proposal = ed.propose_next_runs(design, response=y, n_add=n_add, model=model,
                                     intent=intent, **kwargs)
     ctx = ed.context_from_proposal(
         proposal, budget_total=int(budget or 0), budget_spent=design.n_runs)
     decision = ed.decide_next_action(ctx)
     view = ed.interpret(proposal)
-    return {
+    out = {
         "intent": proposal.intent,
         "n_added": proposal.added.n_runs,
         "proposed_runs": proposal.added.matrix.to_dict("records"),
@@ -132,6 +152,10 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
         "decision": decision.to_dict(),
         "context_addition": (view.for_llm() + "\n\n" + decision.for_llm()),
     }
+    calibration = _surrogate_calibration(getattr(proposal, "surrogate", None))
+    if calibration is not None:
+        out["calibration"] = calibration
+    return out
 
 
 # Agent-facing tool name -> implementation (clean names for the LLM).
