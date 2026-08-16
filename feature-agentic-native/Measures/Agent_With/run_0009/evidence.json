@@ -1,0 +1,20 @@
+{
+  "run_id": "agent_with_0009",
+  "task_id": "Task-03",
+  "condition": "Agent_With",
+  "data_source": {
+    "source_id": "SRC-103",
+    "kind": "real",
+    "dataset_path": "Measures/data/public/wine.csv",
+    "dataset_version": "sklearn-1.9.0",
+    "row_count": 178
+  },
+  "mock_data_used": false,
+  "code_artifacts_generated": [
+    "analysis_agent_with_0009.py"
+  ],
+  "execution_artifacts": [
+    "model_summary_agent_with_0009.json"
+  ],
+  "notes": "Run ejecutado con dataset publico aprobado y trazabilidad completa."
+}

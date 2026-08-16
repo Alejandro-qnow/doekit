@@ -1,0 +1,10 @@
+{
+  "dataset_id": "diabetes",
+  "library": "scikit-learn",
+  "license": "public benchmark via sklearn",
+  "rows": 442,
+  "cols": 11,
+  "target": "target",
+  "recommended_for_task": "Task-02",
+  "why": "dataset real pequeno-mediano ideal para ajuste, residuales y colinealidad"
+}

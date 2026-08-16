@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "doekit-research": {
+      "type": "stdio",
+      "command": "..\\..\\venv\\Scripts\\python.exe",
+      "args": [
+        "mcp/doekit_fastmcp_server.py"
+      ]
+    }
+  }
+}
