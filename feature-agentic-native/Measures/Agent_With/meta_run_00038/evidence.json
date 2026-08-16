@@ -1,0 +1,21 @@
+{
+  "meta_run_id": "meta_run_00038",
+  "pair_id": "PAIR_0005",
+  "task_id": "Task-01",
+  "condition": "Agent_With",
+  "data_source": {
+    "source_id": "SRC-101",
+    "kind": "real",
+    "dataset_path": "Measures/data/public/california_housing.csv",
+    "dataset_version": "sklearn-1.9.0",
+    "row_count": 20640
+  },
+  "mock_data_used": false,
+  "code_artifacts_generated": [
+    "analysis_meta_run_00038.py"
+  ],
+  "execution_artifacts": [
+    "model_summary_meta_run_00038.json"
+  ],
+  "notes": "Run meta ejecutado con dataset publico aprobado y trazabilidad completa."
+}

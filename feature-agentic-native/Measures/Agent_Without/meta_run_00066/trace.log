@@ -1,0 +1,6 @@
+REAL_DATA_CONFIRMED=true
+SOURCE_ID=SRC-103
+DATASET=Measures/data/public/wine.csv
+TASK=Task-03
+CONDITION=Agent_Without
+METHOD=classical_stats_control

@@ -1,0 +1,6 @@
+REAL_DATA_CONFIRMED=true
+SOURCE_ID=SRC-101
+DATASET=Measures/data/public/california_housing.csv
+TASK=Task-01
+CONDITION=Agent_Without
+METHOD=classical_stats_control

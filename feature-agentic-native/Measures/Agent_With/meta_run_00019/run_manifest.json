@@ -1,0 +1,32 @@
+{
+  "meta_run_id": "meta_run_00019",
+  "pair_id": "PAIR_0046",
+  "condition": "Agent_With",
+  "seed": 3046,
+  "task_id": "Task-01",
+  "status": "completed",
+  "created_at": "2026-08-14T13:37:30.509475+00:00",
+  "started_at": "2026-08-14T13:58:17.398667+00:00",
+  "completed_at": "2026-08-14T13:58:39.218678+00:00",
+  "doekit_allowed": true,
+  "meta_factors": {
+    "F2_prompt_strictness": -1,
+    "F3_context_visibility": -1,
+    "F4_timeout_budget": -1,
+    "prompt_strictness_level": "medium",
+    "context_visibility_level": "task_only",
+    "timeout_budget_level": "short",
+    "difficulty_index": 48.3813,
+    "difficulty_stratum": "high",
+    "source_id": "SRC-101",
+    "dataset_path": "Measures/data/public/california_housing.csv"
+  },
+  "artifacts": {
+    "prompt": "task_prompt.md",
+    "manifest": "run_manifest.json",
+    "recommendation": "recommendation.json",
+    "metrics": "metrics.json",
+    "trace": "trace.log",
+    "evidence": "evidence.json"
+  }
+}

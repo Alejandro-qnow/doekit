@@ -1,0 +1,32 @@
+{
+  "meta_run_id": "meta_run_00067",
+  "pair_id": "PAIR_0051",
+  "condition": "Agent_Without",
+  "seed": 3051,
+  "task_id": "Task-02",
+  "status": "completed",
+  "created_at": "2026-08-14T13:37:31.010982+00:00",
+  "started_at": "2026-08-14T13:58:17.550656+00:00",
+  "completed_at": "2026-08-14T13:58:53.922691+00:00",
+  "doekit_allowed": false,
+  "meta_factors": {
+    "F2_prompt_strictness": -1,
+    "F3_context_visibility": -1,
+    "F4_timeout_budget": 1,
+    "prompt_strictness_level": "medium",
+    "context_visibility_level": "task_only",
+    "timeout_budget_level": "long",
+    "difficulty_index": 46.8639,
+    "difficulty_stratum": "medium",
+    "source_id": "SRC-102",
+    "dataset_path": "Measures/data/public/diabetes.csv"
+  },
+  "artifacts": {
+    "prompt": "task_prompt.md",
+    "manifest": "run_manifest.json",
+    "recommendation": "recommendation.json",
+    "metrics": "metrics.json",
+    "trace": "trace.log",
+    "evidence": "evidence.json"
+  }
+}

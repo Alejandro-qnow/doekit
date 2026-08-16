@@ -1,0 +1,65 @@
+{
+  "design_method": "D-optimal",
+  "design_rationale": "To model the response surface and locate the optimum with 3 factors with a budget of 8 runs and a 'linear' model, the best compromise under your priorities is D-optimal (7 runs, D-efficiency 96.1%, G-efficiency 61.4%).",
+  "target_total_runs": 120,
+  "actual_total_runs": 126,
+  "replicates": 3,
+  "pairs": 63,
+  "runs_per_replicate": 42,
+  "tasks": [
+    "Task-01",
+    "Task-02",
+    "Task-03"
+  ],
+  "difficulty": [
+    {
+      "task_id": "Task-01",
+      "difficulty_index": 48.3813,
+      "difficulty_stratum": "high",
+      "rows": 20640,
+      "n_features": 8
+    },
+    {
+      "task_id": "Task-02",
+      "difficulty_index": 46.8639,
+      "difficulty_stratum": "medium",
+      "rows": 442,
+      "n_features": 10
+    },
+    {
+      "task_id": "Task-03",
+      "difficulty_index": 38.3494,
+      "difficulty_stratum": "low",
+      "rows": 178,
+      "n_features": 13
+    }
+  ],
+  "balance": {
+    "by_condition": {
+      "Agent_With": 63,
+      "Agent_Without": 63
+    },
+    "by_task": {
+      "Task-01": 42,
+      "Task-03": 42,
+      "Task-02": 42
+    },
+    "by_stratum": {
+      "high": 42,
+      "low": 42,
+      "medium": 42
+    },
+    "by_prompt": {
+      "medium": 72,
+      "high": 54
+    },
+    "by_context": {
+      "task_only": 72,
+      "task_plus_history": 54
+    },
+    "by_timeout": {
+      "short": 72,
+      "long": 54
+    }
+  }
+}
