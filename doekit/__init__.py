@@ -35,11 +35,28 @@ from .assessment.analysis import (fit_linear_model, fit_mixed_model, main_effect
 from .assessment.evaluation import (evaluate, efficiencies, power_analysis, vif,
                                     alias_matrix, fds_data, DesignEvaluation)
 from .presentation.report import report_html as report, report_summary
-from .orchestration.advise import recommend_design, Recommendation
+from .presentation.narrative import interpret, Interpretation
+from .orchestration.advise import (recommend_design, Recommendation,
+                                   ExperimentHistory, ExperimentRecord,
+                                   learn_priors, historical_recommendation)
 from .orchestration.sequential import (augment_design, propose_next_runs,
                                        compare_designs, NextRunsProposal,
                                        DesignComparison)
 from .adapters.bo import candidates_from_bounds, candidates_from_skopt_space
+from .assessment.surrogate import (Surrogate, OLSSurrogate, fit_surrogate,
+                                   loo_calibration)
+from .orchestration.optimize import (expected_improvement,
+                                     probability_of_improvement,
+                                     upper_confidence_bound,
+                                     expected_hypervolume_improvement,
+                                     get_acquisition, pareto_front, pareto_mask,
+                                     dominates, hypervolume)
+from .orchestration.decide import (Decision, DecisionContext, DecisionScore,
+                                   decide_next_action, context_from_proposal,
+                                   ContinuationScorer, ThresholdPolicy,
+                                   RiskAdaptivePolicy, BudgetAwarePolicy,
+                                   ConvergenceResult, check_convergence,
+                                   DiagnosticsReport, diagnose_step)
 from .orchestration.experiment import Experiment, experiment, desirability_scores
 from .presentation.export import run_sheet, export_csv, export_excel
 from .presentation.workspace import (
@@ -73,14 +90,30 @@ __all__ = [
     "evaluate", "efficiencies", "power_analysis", "vif", "alias_matrix",
     "fds_data", "DesignEvaluation",
     # reporting
-    "report", "report_summary",
+    "report", "report_summary", "interpret", "Interpretation",
     # design advisor
     "recommend_design", "Recommendation",
+    # meta-learning from history (priors + advice)
+    "ExperimentHistory", "ExperimentRecord", "learn_priors",
+    "historical_recommendation",
     # sequential / adaptive
     "augment_design", "propose_next_runs", "compare_designs",
     "NextRunsProposal", "DesignComparison",
     # BO bridge
     "candidates_from_bounds", "candidates_from_skopt_space",
+    # surrogate models (optimize intent)
+    "Surrogate", "OLSSurrogate", "GPSurrogate", "fit_surrogate",
+    "loo_calibration",
+    # acquisition / pareto
+    "expected_improvement", "probability_of_improvement",
+    "upper_confidence_bound", "expected_hypervolume_improvement",
+    "get_acquisition", "pareto_front", "pareto_mask", "dominates", "hypervolume",
+    # decision engine (stop / augment / refine / redesign)
+    "Decision", "DecisionContext", "DecisionScore", "decide_next_action",
+    "context_from_proposal", "ContinuationScorer", "ThresholdPolicy",
+    "RiskAdaptivePolicy", "BudgetAwarePolicy",
+    # sequential monitoring (convergence + step diagnostics)
+    "ConvergenceResult", "check_convergence", "DiagnosticsReport", "diagnose_step",
     # experiment aggregate
     "Experiment", "experiment", "desirability_scores",
     # experiment workspace (traceable project → waves)
@@ -91,3 +124,12 @@ __all__ = [
     # plotting (optional matplotlib)
     "plotting",
 ]
+
+
+def __getattr__(name):
+    # Lazy: GPSurrogate pulls scikit-learn only when actually referenced, so a
+    # bare ``import doekit`` never requires the optional ``doekit[bo]`` extra.
+    if name == "GPSurrogate":
+        from .assessment.surrogate import GPSurrogate  # noqa: PLC0415
+        return GPSurrogate
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

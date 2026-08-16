@@ -55,11 +55,17 @@ def efficiencies(design: Design, model: Optional[Model] = None,
                  seed: Optional[int] = None) -> dict:
     """D/A/G efficiencies (%) and scaled-prediction-variance statistics.
 
+    Computed in **coded units** (``+/-1``). Values near 100% indicate a design
+    close to the theoretical optimum for the fitted model. Mean SPV is the
+    I-optimality criterion (smaller is better).
+
+    Formulas
+    --------
     - **D-eff** ``= 100 * det(X'X)^(1/p) / N`` (100% for an orthogonal design).
     - **A-eff** ``= 100 * p / (N * tr((X'X)^-1))``.
     - **G-eff** ``= 100 * p / max(SPV)`` over the region, with
       ``SPV(x) = N * x'(X'X)^-1 x`` (general equivalence theorem: ``max SPV >= p``).
-    - **I** (mean SPV over the region) plus min/max of SPV.
+    - **I** = mean SPV over the region; also report min/max SPV.
 
     Parameters
     ----------
@@ -81,6 +87,18 @@ def efficiencies(design: Design, model: Optional[Model] = None,
         ``D_efficiency``, ``A_efficiency``, ``G_efficiency`` and
         ``spv_min``/``spv_mean``/``spv_max``. Efficiencies are ``nan`` when the
         design is rank deficient.
+
+    Notes
+    -----
+    D/A are clamped to ``<= 100%`` (Hadamard / AM-HM). G may slightly exceed
+    100% under Monte Carlo region sampling and is likewise clamped.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> eff = ed.efficiencies(ed.full_factorial(3), seed=0)
+    >>> eff["D_efficiency"] > 90 and not eff["rank_deficient"]
+    True
     """
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
@@ -137,10 +155,15 @@ def power_analysis(design: Design, model: Optional[Model] = None,
                    ) -> pd.Series:
     """Per-coefficient power to detect an effect of size ``effect_size``.
 
-    For coefficient ``beta_i`` with standard error ``se_i = sigma *
-    sqrt((X'X)^-1_ii)``, the power of the two-sided t-test at level ``alpha`` uses
-    the non-central ``t`` with non-centrality ``delta_i = effect_size / se_i`` and
-    ``N - p`` degrees of freedom.
+    Uses a two-sided t-test at level ``alpha`` with ``N - p`` residual degrees
+    of freedom. Requires an unsaturated design (``N > p``).
+
+    Formulas
+    --------
+    - ``se_i = sigma * sqrt((X'X)^-1_ii)``
+    - non-centrality ``delta_i = effect_size / se_i``
+    - power from the non-central ``t`` distribution (normal fallback in the
+      far tails when SciPy's ``nct`` is numerically unstable)
 
     Parameters
     ----------
@@ -158,12 +181,19 @@ def power_analysis(design: Design, model: Optional[Model] = None,
     Returns
     -------
     pandas.Series
-        Power per model term.
+        Power per model term (index = term names), values in ``[0, 1]``.
 
     Raises
     ------
     ValueError
         If ``N <= p`` (a saturated design has no residual degrees of freedom).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> pw = ed.power_analysis(ed.full_factorial(3), effect_size=2.0, sigma=1.0)
+    >>> float(pw.min()) > 0.8
+    True
     """
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
@@ -207,10 +237,14 @@ def power_analysis(design: Design, model: Optional[Model] = None,
 def vif(design: Design, model: Optional[Model] = None) -> pd.Series:
     """Variance inflation factors of the model terms (intercept excluded).
 
-    ``VIF_j = 1 / (1 - R2_j)`` where ``R2_j`` regresses column ``j`` on the
-    others. Computed as the diagonal of the inverse correlation matrix.
-    ``VIF = 1`` indicates orthogonality; ``> 5-10`` signals serious
-    multicollinearity.
+    ``VIF = 1`` indicates orthogonality; values ``> 5-10`` signal serious
+    multicollinearity. Perfect collinearity yields ``inf`` (not a misleading
+    finite value from a pseudoinverse).
+
+    Formulas
+    --------
+    ``VIF_j = 1 / (1 - R2_j)`` where ``R2_j`` comes from regressing column
+    ``j`` on the other non-constant columns (after centering/scaling).
 
     Parameters
     ----------
@@ -223,6 +257,13 @@ def vif(design: Design, model: Optional[Model] = None) -> pd.Series:
     -------
     pandas.Series
         VIF per non-intercept term (empty if the model has no such terms).
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> v = ed.vif(ed.full_factorial(3))
+    >>> float(v.max()) < 1.01
+    True
     """
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
@@ -267,12 +308,16 @@ def vif(design: Design, model: Optional[Model] = None) -> pd.Series:
 
 def alias_matrix(design: Design, model: Optional[Model] = None,
                  alias_model: Optional[Model] = None) -> pd.DataFrame:
-    """Alias matrix ``A = (X1'X1)^-1 X1'X2``.
+    """Alias matrix relating primary-model bias to omitted terms.
 
     Quantifies the bias of the primary-model coefficients (``X1``) induced by
-    potential omitted terms (``X2``): ``E[beta_hat_1] = beta_1 + A beta_2``. If
-    ``alias_model`` is ``None``, the two-factor interactions not already in the
-    primary model are used by default.
+    potential omitted terms (``X2``). If ``alias_model`` is ``None``, the
+    two-factor interactions not already in the primary model are used.
+
+    Formulas
+    --------
+    - ``A = (X1'X1)^-1 X1'X2``
+    - ``E[beta_hat_1] = beta_1 + A beta_2``
 
     Parameters
     ----------
@@ -287,7 +332,14 @@ def alias_matrix(design: Design, model: Optional[Model] = None,
     Returns
     -------
     DataFrame
-        The alias matrix, indexed by primary terms and columned by alias terms.
+        Alias matrix indexed by primary terms and columned by alias terms.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> A = ed.alias_matrix(ed.fractional_factorial(3, generators=["C=AB"]))
+    >>> A.shape[0] > 0 and A.shape[1] > 0
+    True
     """
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
@@ -317,10 +369,14 @@ def fds_data(design: Design, model: Optional[Model] = None,
              seed: Optional[int] = None) -> pd.DataFrame:
     """Data for the **Fraction of Design Space (FDS) plot**.
 
-    Sorts the scaled prediction variance ``SPV = N * x'(X'X)^-1 x`` over a region
-    sample and returns a ``DataFrame`` with ``fraction`` (0->1) and ``spv``. A
-    flat, low curve = uniform and precise prediction across the whole region (the
-    desirable case). It is the gold standard of design evaluation.
+    Sorts SPV over a Monte Carlo sample of the experimental region. A flat,
+    low curve means uniform and precise prediction across the whole region
+    (the desirable case). Rank-deficient designs return ``spv`` as ``nan``.
+
+    Formulas
+    --------
+    ``SPV(x) = N * x'(X'X)^-1 x``, sorted ascending; ``fraction`` is the
+    empirical CDF abscissa ``(i - 0.5) / m`` for ``i = 1..m``.
 
     Parameters
     ----------
@@ -338,7 +394,14 @@ def fds_data(design: Design, model: Optional[Model] = None,
     Returns
     -------
     DataFrame
-        Columns ``fraction`` and ``spv``.
+        Columns ``fraction`` (0→1) and ``spv``.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> fds = ed.fds_data(ed.full_factorial(3), n_region=500, seed=0)
+    >>> list(fds.columns) == ["fraction", "spv"]
+    True
     """
     model = _resolve_model(design, model)
     coded = _coded_frame(design)
@@ -365,6 +428,9 @@ def fds_data(design: Design, model: Optional[Model] = None,
 class DesignEvaluation:
     """Quality report card of a design (result of :func:`evaluate`).
 
+    Aggregates efficiencies, power, VIF and FDS into one object. Print or call
+    :meth:`summary` for a human-readable card; use :meth:`to_dict` to persist.
+
     Attributes
     ----------
     n_runs, n_params, dof : int
@@ -377,6 +443,13 @@ class DesignEvaluation:
         Output of :func:`vif`.
     fds : DataFrame
         Output of :func:`fds_data`.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ev = ed.evaluate(ed.full_factorial(3), n_region=500, seed=0)
+    >>> ev.d_efficiency > 90
+    True
     """
 
     n_runs: int
@@ -497,9 +570,9 @@ def evaluate(design: Design, model: Optional[Model] = None,
     """Evaluate a design end-to-end and return a :class:`DesignEvaluation`.
 
     Combines :func:`efficiencies`, :func:`power_analysis`, :func:`vif` and
-    :func:`fds_data`. ``effect_size`` is the anticipated effect size in the same
-    units as the response (non-centrality uses ``effect_size / sigma``). Metrics
-    use coded factor units when ``Design.factors`` is set.
+    :func:`fds_data`. Metrics use coded factor units when ``Design.factors``
+    is set. Saturated designs yield an empty ``power`` series instead of
+    raising.
 
     Parameters
     ----------
@@ -508,21 +581,38 @@ def evaluate(design: Design, model: Optional[Model] = None,
     model : Model, optional
         Model to score; resolved from the design if omitted.
     effect_size : float or array-like, default 1.0
-        Anticipated effect size for the power analysis.
+        Anticipated effect size for the power analysis (same units as the
+        response; non-centrality uses ``effect_size / sigma``).
     sigma : float, default 1.0
         Noise standard deviation.
     alpha : float, default 0.05
         Two-sided significance level for the power analysis.
-    region, n_region, seed
-        Region-sampling controls shared by the efficiency and FDS computations.
+    region : DataFrame, optional
+        Precomputed region sample shared by efficiency and FDS.
+    n_region : int, default 20000
+        Region sample size when ``region`` is not provided.
+    seed : int, optional
+        Seed for the region sampling.
     report : None, bool, str, Path or dict, optional
-        If not ``None``, a design-quality HTML report is generated and its path is
-        stored in ``result.report_path``.
+        If not ``None``, a design-quality HTML report is generated and its path
+        is stored in ``result.report_path``.
 
     Returns
     -------
     DesignEvaluation
         The full quality report card.
+
+    Notes
+    -----
+    See the Formulas sections of :func:`efficiencies`, :func:`power_analysis`,
+    :func:`vif` and :func:`fds_data` for the underlying equations.
+
+    Examples
+    --------
+    >>> import doekit as ed
+    >>> ev = ed.evaluate(ed.plackett_burman(6), n_region=500, seed=0)
+    >>> print(ev.d_efficiency > 80)
+    True
     """
     model = _resolve_model(design, model)
     eff = efficiencies(design, model, region=region, n_region=n_region, seed=seed)

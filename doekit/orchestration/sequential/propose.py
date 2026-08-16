@@ -398,33 +398,68 @@ class NextRunsProposal:
     caveats: list = field(default_factory=list)
     active_terms: list = field(default_factory=list)
     sigma_hat: Optional[float] = None
+    # --- optimize intent (surrogate + acquisition); None for the learn path ---
+    intent: str = "learn"
+    acquisition: Optional[str] = None
+    best_so_far: Optional[object] = None
+    predicted_improvement: Optional[float] = None
+    pareto_front: Optional[list] = None
+    explore_exploit: Optional[dict] = None
+    surrogate: object = field(default=None, repr=False)
+    acquisition_values: Optional[np.ndarray] = field(default=None, repr=False)
+
+    def _surrogate_summary(self) -> Optional[dict]:
+        if self.surrogate is None:
+            return None
+        sur = self.surrogate
+        summary = {"kind": type(sur).__name__}
+        model = getattr(sur, "model", None)
+        if model is not None:
+            summary["model"] = repr(model)
+        try:
+            summary["calibration"] = sur.calibration()
+        except (ValueError, AttributeError, np.linalg.LinAlgError):
+            summary["calibration"] = None
+        return summary
 
     def to_dict(self) -> dict:
         """Serialize (``schema: doekit.NextRunsProposal/1``)."""
         return _jsonify({
             "schema": "doekit.NextRunsProposal/1",
+            "intent": self.intent,
             "criterion": self.criterion,
             "rationale": self.rationale,
             "caveats": list(self.caveats),
             "active_terms": list(self.active_terms),
             "sigma_hat": self.sigma_hat,
+            "acquisition": self.acquisition,
+            "best_so_far": self.best_so_far,
+            "predicted_improvement": self.predicted_improvement,
+            "pareto_front": self.pareto_front,
+            "explore_exploit": self.explore_exploit,
+            "surrogate": self._surrogate_summary(),
             "added": self.added.to_dict(),
             "combined": self.combined.to_dict(),
             "comparison": self.comparison.to_dict(),
         })
 
     def summary(self) -> str:
-        lines = [
-            f"Next runs proposal ({self.added.n_runs} new, "
-            f"criterion={self.criterion})",
-            "-" * 48,
-            self.rationale,
-            "",
-            self.comparison.summary,
-            "",
-            "Proposed runs:",
-            repr(self.added.matrix),
-        ]
+        if self.intent == "optimize":
+            head = (f"Next runs proposal ({self.added.n_runs} new, "
+                    f"intent=optimize, acquisition={self.acquisition})")
+        else:
+            head = (f"Next runs proposal ({self.added.n_runs} new, "
+                    f"criterion={self.criterion})")
+        lines = [head, "-" * 48, self.rationale, "", self.comparison.summary, ""]
+        if self.intent == "optimize" and self.best_so_far is not None:
+            lines.append(f"Best so far: {self.best_so_far}")
+            if self.predicted_improvement is not None:
+                lines.append(
+                    f"Predicted improvement of best candidate: "
+                    f"{self.predicted_improvement:+.4g}"
+                )
+            lines.append("")
+        lines += ["Proposed runs:", repr(self.added.matrix)]
         if self.caveats:
             lines += ["", "Caveats:"] + [f"  - {c}" for c in self.caveats]
         return "\n".join(lines)
@@ -442,27 +477,42 @@ def propose_next_runs(design: Design, response=None, n_add: int = 4,
                       alpha: float = 0.05, n_region: int = 4000,
                       n_candidates: int = 200, n_starts: int = 5,
                       seed: Optional[int] = None,
-                      active_p: float = 0.05) -> NextRunsProposal:
+                      active_p: float = 0.05, *,
+                      intent: str = "learn",
+                      objectives: Optional[list] = None,
+                      goals: Optional[dict] = None,
+                      goal: str = "max",
+                      acquisition: Optional[str] = None,
+                      surrogate: str = "auto",
+                      kappa: float = 2.0, xi: float = 0.01) -> NextRunsProposal:
     """Propose the next batch of runs for a sequential experiment.
 
-    Without ``response``, augments by information (D/I/…). With ``response``,
-    estimates residual sigma, flags active terms (p < ``active_p``), and uses
-    the empirical sigma for the power side of :func:`compare_designs`.
+    Two intents share one entry point:
+
+    - ``intent="learn"`` (default) — classical **D/I-optimal augmentation**:
+      runs that sharpen the *model* (unchanged behavior). Without ``response``
+      it augments by information; with ``response`` it estimates residual sigma
+      and flags active terms (p < ``active_p``).
+    - ``intent="optimize"`` — **surrogate + acquisition**: fits a
+      :class:`~doekit.assessment.surrogate.Surrogate` (GP with the OLS surface as
+      prior mean, or plain OLS), then proposes runs that move the *result*
+      toward the optimum. Supports multi-objective via Pareto/EHVI.
 
     Parameters
     ----------
     design : Design
         Current design (runs already done or committed).
     response : array-like, optional
-        Measured responses for the current design rows.
+        Measured responses. For ``intent="optimize"`` this is required and may
+        be multi-column (2d array / DataFrame) for multi-objective.
     n_add : int, default 4
         Number of new runs to propose. Capped by ``budget - n_runs`` when set.
     model : Model, optional
-        Model for augmentation / evaluation.
+        Model for augmentation / the surrogate prior mean.
     criterion : str, default "D"
-        Augmentation criterion.
+        Augmentation criterion (learn intent only).
     candidates : Design, optional
-        Candidate set for new runs.
+        Candidate set for new runs (both intents).
     budget : int, optional
         Maximum total runs (current + new).
     priorities : dict, optional
@@ -474,19 +524,33 @@ def propose_next_runs(design: Design, response=None, n_add: int = 4,
         Evaluation / search controls.
     active_p : float, default 0.05
         p-value cutoff for listing active terms when ``response`` is given.
+    intent : {"learn", "optimize"}, default "learn"
+        Whether to augment for information or optimize the response.
+    objectives : list of str, optional
+        Column names when ``response`` is multi-column (optimize intent).
+    goals : dict, optional
+        ``{column: "max"|"min"}`` per objective (optimize intent).
+    goal : {"max", "min"}, default "max"
+        Direction for a single objective when ``goals`` is not given.
+    acquisition : str, optional
+        Acquisition function: ``"ei"`` / ``"ucb"`` / ``"pi"`` (single) or
+        ``"ehvi"`` (multi). Defaults to ``"ei"`` (single) / ``"ehvi"`` (multi).
+    surrogate : {"auto", "ols", "gp"}, default "auto"
+        Surrogate backend (optimize intent).
+    kappa : float, default 2.0
+        UCB exploration weight.
+    xi : float, default 0.01
+        EI/PI exploration margin.
 
     Returns
     -------
     NextRunsProposal
     """
     _ = priorities  # API placeholder for multi-objective next-batch ranking
+    intent = str(intent).strip().lower()
+    if intent not in ("learn", "optimize"):
+        raise ValueError(f"intent must be 'learn' or 'optimize', got {intent!r}")
     model = _resolve_model(design, model)
-    caveats = [
-        "Proposal is conditional on the assumed model and criterion; "
-        "re-run after updating the model if the active set changes.",
-        "Augmentation is classical (D/I-optimal conditioned on current runs), "
-        "not a black-box Bayesian optimizer — see doekit.bo for a thin BO bridge.",
-    ]
 
     if budget is not None:
         remaining = budget - design.n_runs
@@ -495,6 +559,23 @@ def propose_next_runs(design: Design, response=None, n_add: int = 4,
                 f"budget={budget} already exhausted (n_runs={design.n_runs})"
             )
         n_add = min(n_add, remaining)
+
+    if intent == "optimize":
+        return _propose_optimize(
+            design, response=response, n_add=n_add, model=model,
+            candidates=candidates, objectives=objectives, goals=goals,
+            goal=goal, acquisition=acquisition, surrogate_kind=surrogate,
+            kappa=kappa, xi=xi, n_candidates=n_candidates, n_region=n_region,
+            seed=seed,
+        )
+
+    caveats = [
+        "Proposal is conditional on the assumed model and criterion; "
+        "re-run after updating the model if the active set changes.",
+        "Augmentation is classical (D/I-optimal conditioned on current runs), "
+        "not a black-box Bayesian optimizer — use intent='optimize' for a "
+        "surrogate + acquisition loop.",
+    ]
 
     sigma_hat = None
     active_terms: list[str] = []
@@ -562,4 +643,289 @@ def propose_next_runs(design: Design, response=None, n_add: int = 4,
         added=added, combined=combined, comparison=comparison,
         criterion=criterion.strip().upper(), rationale=rationale,
         caveats=caveats, active_terms=active_terms, sigma_hat=sigma_hat,
+    )
+
+
+# ---------------------------------------------------------------------------
+# optimize intent: surrogate + acquisition
+# ---------------------------------------------------------------------------
+
+def _response_frame(response, n_runs: int, objectives) -> pd.DataFrame:
+    """Normalize a 1d/2d/DataFrame response to a DataFrame (n_runs x k)."""
+    if response is None:
+        raise ValueError("intent='optimize' requires response=... (the measured y)")
+    if isinstance(response, pd.DataFrame):
+        frame = response.reset_index(drop=True)
+    else:
+        arr = np.asarray(response, dtype=float)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        names = list(objectives) if objectives else (
+            [f"y{i + 1}" for i in range(arr.shape[1])] if arr.shape[1] > 1 else ["y"]
+        )
+        frame = pd.DataFrame(arr, columns=names)
+    if len(frame) != n_runs:
+        raise ValueError(
+            f"response has {len(frame)} rows; design has {n_runs}"
+        )
+    if objectives:
+        frame = frame.loc[:, list(objectives)]
+    return frame
+
+
+def _optimize_candidates(design: Design, cols: list, factors: list,
+                         n: int, seed: Optional[int],
+                         model: Optional[Model] = None) -> pd.DataFrame:
+    """Continuous candidate cover for optimization (interior points allowed).
+
+    Unlike the learn-path grid, continuous factors are sampled *continuously*
+    across their range so the acquisition can reach an interior optimum.
+    Discrete / categorical factors are sampled from their levels, and mixture
+    designs are sampled uniformly *on the simplex* (so candidates are feasible).
+    """
+    rng = np.random.default_rng(seed)
+    from ...domain.region import region_from_design, SimplexRegion  # noqa: PLC0415
+    try:
+        region = region_from_design(design, model)
+    except (ValueError, KeyError):
+        region = None
+    if isinstance(region, SimplexRegion):
+        pts = region.sample(n, rng)
+        for c in cols:
+            if c not in pts.columns:
+                pts[c] = 0.0
+        return pts.loc[:, cols].reset_index(drop=True)
+    by_name = {getattr(f, "name", None): f for f in factors}
+    data: dict = {}
+    for c in cols:
+        f = by_name.get(c)
+        col = design.matrix[c]
+        if isinstance(f, ContinuousFactor):
+            data[c] = rng.uniform(float(f.low), float(f.high), size=n)
+        elif isinstance(f, (DiscreteFactor, CategoricalFactor)):
+            levels = np.array(list(f.levels), dtype=object)
+            data[c] = rng.choice(levels, size=n)
+        elif pd.api.types.is_numeric_dtype(col):
+            lo, hi = float(col.min()), float(col.max())
+            if lo == hi:
+                lo, hi = lo - 1.0, hi + 1.0
+            data[c] = rng.uniform(lo, hi, size=n)
+        else:
+            levels = np.array(list(pd.unique(col)), dtype=object)
+            data[c] = rng.choice(levels, size=n)
+    return pd.DataFrame(data, columns=cols)
+
+
+def _within_region(cand_frame: pd.DataFrame, design: Design,
+                   model: Model, n_add: int):
+    """Filter candidates to a constrained region (simplex) when one applies."""
+    from ...domain.region import region_from_design, SimplexRegion  # noqa: PLC0415
+    try:
+        region = region_from_design(design, model)
+    except (ValueError, KeyError):
+        return cand_frame
+    # Only enforce genuinely constrained regions; a plain hypercube on natural
+    # units would wrongly reject everything (learn path does not filter either).
+    if not isinstance(region, SimplexRegion):
+        return cand_frame
+    mask = region.contains(cand_frame)
+    if int(mask.sum()) >= max(n_add, 1):
+        return cand_frame.loc[mask].reset_index(drop=True)
+    return cand_frame
+
+
+def _propose_optimize(design: Design, response, n_add: int, model: Model,
+                      candidates: Optional[Design], objectives, goals,
+                      goal: str, acquisition: Optional[str], surrogate_kind: str,
+                      kappa: float, xi: float, n_candidates: int,
+                      n_region: int, seed: Optional[int]) -> NextRunsProposal:
+    """Surrogate + acquisition proposal (see :func:`propose_next_runs`)."""
+    from ...assessment.surrogate import fit_surrogate  # noqa: PLC0415
+    from ..optimize import (  # noqa: PLC0415
+        expected_improvement, upper_confidence_bound,
+        probability_of_improvement, expected_hypervolume_improvement,
+        pareto_front as _pareto_front,
+    )
+
+    cols = _factor_columns(design)
+    fixed_frame = design.matrix.loc[:, cols].reset_index(drop=True)
+    factors = list(design.factors or [])
+    y_frame = _response_frame(response, design.n_runs, objectives)
+    obj_names = list(y_frame.columns)
+    multi = len(obj_names) > 1
+    goals = dict(goals or {})
+    if not multi and obj_names[0] not in goals:
+        goals[obj_names[0]] = goal
+
+    acq_name = (acquisition or ("ehvi" if multi else "ei")).strip().lower()
+
+    # -- candidate pool (continuous cover; respect constrained regions) ------
+    if candidates is not None:
+        cand_frame = candidates.matrix.loc[
+            :, [c for c in cols if c in candidates.matrix.columns]]
+        for c in cols:
+            if c not in cand_frame.columns:
+                raise ValueError(f"candidate set missing factor column {c!r}")
+        cand_frame = cand_frame.loc[:, cols].reset_index(drop=True)
+    else:
+        cand_frame = _optimize_candidates(design, cols, factors,
+                                          n_candidates, seed, model)
+    cand_frame = _within_region(cand_frame, design, model, n_add)
+    if len(cand_frame) < n_add:
+        raise ValueError(
+            f"only {len(cand_frame)} candidates available for n_add={n_add}; "
+            "increase n_candidates or relax constraints"
+        )
+
+    def _fit_all(train_frame, y_cols, n_restarts):
+        surs = []
+        for name in obj_names:
+            surs.append(fit_surrogate(
+                train_frame, y_cols[name].to_numpy(dtype=float),
+                kind=surrogate_kind, model=model, factors=factors,
+                n_restarts=n_restarts, seed=seed,
+            ))
+        return surs
+
+    surrogates = _fit_all(fixed_frame, y_frame, n_restarts=5)
+    pool_std_mean = float(np.mean(np.column_stack(
+        [s.predict(cand_frame)[1] for s in surrogates])))
+
+    def _predict(surs, frame):
+        means = np.column_stack([surs[i].predict(frame)[0] for i in range(len(surs))])
+        stds = np.column_stack([surs[i].predict(frame)[1] for i in range(len(surs))])
+        return means, stds
+
+    def _best(y_cols):
+        out = {}
+        for name in obj_names:
+            v = y_cols[name].to_numpy(dtype=float)
+            out[name] = float(np.max(v) if goals.get(name, "max") == "max"
+                              else np.min(v))
+        return out
+
+    def _score(means, stds, y_cols):
+        if multi:
+            return expected_hypervolume_improvement(
+                means, stds, y_cols[obj_names].to_numpy(dtype=float),
+                goals=goals, columns=obj_names, seed=seed)
+        mean, std = means[:, 0], stds[:, 0]
+        best = _best(y_cols)[obj_names[0]]
+        g = goals.get(obj_names[0], "max")
+        if acq_name == "ucb":
+            return upper_confidence_bound(mean, std, kappa=kappa, goal=g)
+        if acq_name == "pi":
+            return probability_of_improvement(mean, std, best, goal=g, xi=xi)
+        return expected_improvement(mean, std, best, goal=g, xi=xi)
+
+    # -- batch selection via Kriging Believer (constant-liar) ----------------
+    train_frame = fixed_frame.copy()
+    train_y = y_frame.copy()
+    remaining = list(range(len(cand_frame)))
+    selected: list[int] = []
+    first_scores = None
+    predicted_improvement = None
+    sel_std_vals: list[float] = []
+
+    for step in range(n_add):
+        means, stds = _predict(surrogates, cand_frame.iloc[remaining])
+        scores = _score(means, stds, train_y)
+        if first_scores is None:
+            # acquisition surface over the full pool for plotting / reporting
+            m0, s0 = _predict(surrogates, cand_frame)
+            first_scores = _score(m0, s0, train_y)
+        local = int(np.argmax(scores))
+        idx = remaining[local]
+        selected.append(idx)
+        sel_std_vals.append(float(np.mean(stds[local])))
+        # believe the surrogate at the chosen point (liar = predicted mean)
+        liar_mean = means[local]
+        if step == 0:
+            # acquisition value of the best candidate: EI (>=0) / EHVI (HV gain)
+            # / UCB bound, depending on the chosen acquisition.
+            predicted_improvement = float(scores[local])
+        new_row = cand_frame.iloc[[idx]].reset_index(drop=True)
+        train_frame = pd.concat([train_frame, new_row], ignore_index=True)
+        liar = {name: liar_mean[j] for j, name in enumerate(obj_names)}
+        train_y = pd.concat(
+            [train_y, pd.DataFrame([liar], columns=obj_names)], ignore_index=True)
+        remaining.pop(local)
+        if step < n_add - 1:
+            surrogates = _fit_all(train_frame, train_y, n_restarts=0)
+
+    new_rows = cand_frame.iloc[selected].reset_index(drop=True)
+    combined_mat = pd.concat([fixed_frame, new_rows], ignore_index=True)
+    meta_common = {"parent_kind": design.metadata.get("kind"),
+                   "intent": "optimize", "acquisition": acq_name}
+    added = Design(
+        matrix=new_rows, factors=factors, model=model,
+        metadata={"kind": "ProposedRuns", "n_added": int(n_add), **meta_common},
+    )
+    combined = Design(
+        matrix=combined_mat, factors=factors, model=model,
+        metadata={"kind": "AugmentedDesign", "n_original": int(design.n_runs),
+                  "n_added": int(n_add), **meta_common},
+    )
+
+    comparison = compare_designs(
+        design, combined, model=model, n_region=n_region, seed=seed,
+        a_label="current", b_label="optimize",
+    )
+
+    best_now = _best(y_frame)
+    best_report = best_now if multi else best_now[obj_names[0]]
+    front = None
+    if multi:
+        pf = _pareto_front(y_frame[obj_names].to_numpy(dtype=float),
+                           goals=goals, columns=obj_names)
+        front = [dict(zip(obj_names, row)) for row in pf.tolist()]
+
+    sel_std = float(np.mean(sel_std_vals)) if sel_std_vals else float("nan")
+    ratio = sel_std / pool_std_mean if pool_std_mean > 0 else float("nan")
+    if np.isfinite(ratio):
+        mode = ("exploring" if ratio > 1.15 else
+                "exploiting" if ratio < 0.85 else "balanced")
+    else:
+        mode = "unknown"
+    explore_exploit = {
+        "selected_std_mean": sel_std,
+        "pool_std_mean": pool_std_mean,
+        "ratio": ratio,
+        "mode": mode,
+    }
+
+    surrogate_obj = surrogates[0] if not multi else surrogates
+    sur_kind = type(surrogates[0]).__name__
+    if multi:
+        rationale = (
+            f"Propose {n_add} run(s) by {acq_name.upper()} on a {sur_kind} "
+            f"over {len(obj_names)} objectives {obj_names}; best-so-far="
+            f"{best_report}. {mode.capitalize()} the region."
+        )
+    else:
+        rationale = (
+            f"Propose {n_add} run(s) by {acq_name.upper()} on a {sur_kind} "
+            f"(goal={goals[obj_names[0]]}); best-so-far={best_report:.4g}, "
+            f"top acquisition score={predicted_improvement:.4g}. "
+            f"{mode.capitalize()} the region."
+        )
+
+    caveats = [
+        "Optimize intent conditions on the surrogate; calibration (see "
+        "surrogate.calibration / parity plot) audits whether sigma(x) is trustworthy.",
+        "Acquisition assumes the response is to be optimized, not just learned; "
+        "use intent='learn' to sharpen the model instead.",
+    ]
+    if sur_kind == "OLSSurrogate":
+        caveats.append(
+            "OLS surrogate in use (scikit-learn not installed): sigma(x) is the "
+            "linear prediction SE, not a GP posterior. Install doekit[bo] for a GP.")
+
+    return NextRunsProposal(
+        added=added, combined=combined, comparison=comparison,
+        criterion="", rationale=rationale, caveats=caveats,
+        intent="optimize", acquisition=acq_name, best_so_far=best_report,
+        predicted_improvement=predicted_improvement, pareto_front=front,
+        explore_exploit=explore_exploit, surrogate=surrogate_obj,
+        acquisition_values=first_scores,
     )
