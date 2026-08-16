@@ -44,6 +44,7 @@ plot = ["matplotlib>=3.6"]
 report = ["matplotlib>=3.6"]
 bo = ["scikit-optimize>=0.9", "scikit-learn>=1.1"]
 export = ["openpyxl>=3.1"]
+mcp = ["fastmcp>=2.0"]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.5",
