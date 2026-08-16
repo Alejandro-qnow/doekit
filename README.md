@@ -6,8 +6,8 @@ Una **capa semántica** (`interpret`/`Interpretation`) convierte cifras en signi
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional (gráficos); `doekit[mcp]` sirve las tools para agentes y `doekit[bo]` añade el surrogate GP.
 
-- **Documentación (bilingüe EN/ES):** fuente en [`docs/`](docs/) (MkDocs) — introducción,
-  teoría de cada metodología y referencia de API.
+- **Documentación (EN/ES):** [alejandro-qnow.github.io/doekit](https://alejandro-qnow.github.io/doekit/) — flujo DoE → learn|optimize → capa semántica → decide, teoría, API y agentes/MCP.
+- **Fuente de la doc:** [`docs/`](docs/) (MkDocs Material).
 - **Notebooks de casos de uso:** [`notebooks/`](notebooks/)
 
 ## Instalación
@@ -15,7 +15,10 @@ Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional 
 ```bash
 pip install doekit            # núcleo
 pip install "doekit[plot]"    # con gráficos (matplotlib)
+pip install "doekit[report]"  # reportes HTML
 pip install "doekit[export]"  # Excel (openpyxl)
+pip install "doekit[mcp]"     # servidor MCP para agentes
+pip install "doekit[bo]"      # surrogate GP (optimize)
 ```
 
 Desde el repositorio, para desarrollo:
@@ -65,7 +68,10 @@ exp = ed.experiment(goal="screening", factors=6, budget=12)
 exp.evaluate()
 exp.export_csv("runs.csv")         # plantilla de laboratorio
 exp.ingest(y)                      # datos reales
-nxt = exp.next(n_add=4)            # siguiente lote
+nxt = exp.next(n_add=4)            # learn (aumentación clásica)
+# nxt = exp.next(n_add=4, intent="optimize")  # surrogate + adquisición (doekit[bo])
+print(ed.interpret(nxt).for_llm()) # capa semántica → contexto para agentes
+dec = exp.decide_next()            # stop | augment | refine | redesign
 ```
 
 Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
@@ -84,16 +90,20 @@ Cada constructor devuelve un objeto `Design` con `.matrix` (pandas), `.model`,
 | Óptimos                       | `optimal_design` (D/A/I vía KL-exchange o Fedorov, multi-arranque)                                |
 | Criterios                     | `d/a/t/g/e/i_criterion`                                                                           |
 | **Evaluación / benchmarking** | `evaluate`, `efficiencies`, `power_analysis`, `alias_matrix`, `vif`, `fds_data`                   |
-| **Reporte**                   | `report` (HTML autocontenido: metodología, calidad, resultados, anomalías, recomendaciones)       |
+| **Capa semántica**            | `interpret` → `Interpretation` (`summary` / `for_llm` / `to_dict`)                                  |
+| **Decisión**                  | `decide_next_action`, `Experiment.decide_next` → stop / augment / refine / redesign                 |
+| **Optimize (ML/BO)**          | `propose_next_runs(intent="optimize")`, surrogate OLS/GP, EI/PI/UCB/EHVI, Pareto                    |
+| **Reporte**                   | `report` (HTML: metodología, calidad, resultados, anomalías, recomendaciones)                       |
 | **Asesor**                    | `recommend_design` (reglas + evaluación: recomienda el mejor método para el caso)                 |
 | Factores                      | `ContinuousFactor`, `DiscreteFactor`, `CategoricalFactor` (codificación natural↔codificada)       |
 | Modelo                        | `Model.parse`, `Model.full_quadratic`, `Model.main_effects`                                       |
 | Análisis                      | `fit_linear_model` (blocks, HC), `anova_table`, `lack_of_fit`, `fit_mixed_model`, `main_effects`  |
 | **Secuencial**                | `augment_design`, `propose_next_runs`, `compare_designs`, `candidates_from_bounds`                 |
 | **Experiment**                | `ed.experiment(...)` — plan → evaluate → ingest → next → report → export CSV/Excel                 |
+| **Workspace / MCP**           | `ed.project` / waves; `doekit[mcp]` (recommend · evaluate · propose_and_decide)                     |
 | Mezcla / split-plot           | `simplex_lattice`, `simplex_centroid`, `split_plot_design`, `MixtureFactor`, `Constraints`         |
 | Gráficos                      | `half_normal_plot`, `effects_plot`, `correlation_plot`, `fds_plot`, `power_plot`, `alias_heatmap` |
-| CLI                           | `doekit recommend|evaluate|experiment`                                                             |
+| CLI                           | `doekit recommend|evaluate|experiment|project`                                                     |
 
 
 ## Lo que nos distingue: evaluar el diseño, no solo construirlo

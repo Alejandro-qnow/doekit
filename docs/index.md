@@ -74,6 +74,10 @@ both audiences:
 2. **Evaluate** — a reproducible **quality report card**: *"how far is my design
    from the theoretical optimum?"*
 3. **Build** — the full catalog of generators.
+4. **Decide** — after learn or optimize, `decide_next` maps signals to
+   `stop | augment | refine | redesign` (continue loops back to Design).
+5. **Optimize** — `intent="optimize"` fits a surrogate (OLS or GP) and scores
+   candidates with EI/PI/UCB/EHVI; classical DoE remains `intent="learn"`.
 
 ```python
 ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
@@ -82,6 +86,7 @@ ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
 print(ed.interpret(ev).for_llm())   # semantic layer: metrics -> meaning (never invented)
 ed.report(bb, response=y)           # HTML report folder for people (needs doekit[report])
 # Aggregate loop: ed.experiment(goal=..., factors=..., budget=...)
+# Agents: pip install "doekit[mcp]" → recommend / evaluate / propose_and_decide
 ```
 
 ## Where to go next
@@ -94,3 +99,4 @@ ed.report(bb, response=y)           # HTML report folder for people (needs doeki
 - **Agents & MCP** — the portable [experiment-designer skill](agents/index.md) and
   the [MCP server](agents/mcp.md) that exposes doekit as agent tools (recommend /
   evaluate / propose_and_decide).
+- **Sequential DoE** — learn vs optimize in [Sequential DoE](theory/sequential-doe.md).

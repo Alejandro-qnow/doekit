@@ -11,6 +11,11 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   `CONTRIBUTING.md` y aplicada a la API pública (domain, generation, assessment,
   orchestration, presentation/workspace, adapters/MCP, CLI). Idioma inglés;
   helpers privados siguen en una línea.
+- Home MkDocs: diagrama Mermaid del flujo Design → Recommend → Learn|Optimize →
+  Semantic → decide; Mermaid habilitado en `mkdocs.yml`.
+- README / `[project.urls]`: enlace público
+  [alejandro-qnow.github.io/doekit](https://alejandro-qnow.github.io/doekit/)
+  como Documentation/Homepage de PyPI.
 
 ## [0.9.0] - 2026-08-16
 

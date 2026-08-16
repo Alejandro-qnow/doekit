@@ -65,10 +65,11 @@ dev = [
 doekit = "doekit.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/qnowtech/doekit"
-Repository = "https://github.com/qnowtech/doekit"
-Issues = "https://github.com/qnowtech/doekit/issues"
-Changelog = "https://github.com/qnowtech/doekit/blob/master/CHANGELOG.md"
+Homepage = "https://alejandro-qnow.github.io/doekit/"
+Documentation = "https://alejandro-qnow.github.io/doekit/"
+Repository = "https://github.com/Alejandro-qnow/doekit"
+Issues = "https://github.com/Alejandro-qnow/doekit/issues"
+Changelog = "https://github.com/Alejandro-qnow/doekit/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

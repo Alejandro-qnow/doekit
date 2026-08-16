@@ -74,6 +74,10 @@ Design-Expert) — y lo hace una sola vez para ambos públicos:
 2. **Evaluar** — un **boletín de calidad** reproducible: *"¿qué tan lejos está mi
    diseño del óptimo teórico?"*
 3. **Construir** — el catálogo completo de generadores.
+4. **Decidir** — tras learn u optimize, `decide_next` mapea señales a
+   `stop | augment | refine | redesign` (continuar vuelve a Design).
+5. **Optimizar** — `intent="optimize"` ajusta un surrogate (OLS o GP) y puntúa
+   candidatos con EI/PI/UCB/EHVI; el DoE clásico sigue en `intent="learn"`.
 
 ```python
 ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
@@ -82,6 +86,7 @@ ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
 print(ed.interpret(ev).for_llm())   # capa semántica: cifras -> significado (sin inventar)
 ed.report(bb, response=y)           # carpeta HTML para personas (requiere doekit[report])
 # Bucle agregado: ed.experiment(goal=..., factors=..., budget=...)
+# Agentes: pip install "doekit[mcp]" → recommend / evaluate / propose_and_decide
 ```
 
 ## Por dónde seguir
@@ -96,3 +101,5 @@ ed.report(bb, response=y)           # carpeta HTML para personas (requiere doeki
   [diseñador de experimentos](agents/index.md) y el [servidor MCP](agents/mcp.md)
   que expone doekit como tools para agentes (recommend / evaluate /
   propose_and_decide).
+- **DoE secuencial** — learn vs optimize en
+  [DoE secuencial](theory/sequential-doe.md).
