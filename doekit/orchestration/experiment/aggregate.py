@@ -245,6 +245,7 @@ class Experiment:
         """
         from ..decide import (  # noqa: PLC0415
             decide_next_action, context_from_proposal, check_convergence,
+            diagnose_step,
         )
         if proposal is None:
             proposal = self.next(n_add=n_add, intent=intent, **kwargs)
@@ -260,8 +261,17 @@ class Experiment:
         if history is not None:
             metric_key = "best_so_far" if intent == "optimize" else "delta_D_efficiency"
             convergence = check_convergence(history, metric_key=metric_key)
-        return decide_next_action(ctx, scorer=scorer, policy=policy,
-                                  convergence=convergence)
+        decision = decide_next_action(ctx, scorer=scorer, policy=policy,
+                                      convergence=convergence)
+        # Graduated from doekit-enhanced: run per-step diagnostics automatically
+        # and attach them so every decision carries its warnings (power, G-eff,
+        # budget, uncertainty) without an extra call. Reuses the same signals
+        # already in the context; non-breaking (rides in metadata).
+        report = diagnose_step(
+            ctx.metrics, budget_remaining=ctx.budget_remaining,
+            uncertainty=ctx.uncertainty, convergence=convergence)
+        decision.metadata["diagnostics"] = report.to_dict()
+        return decision
 
     def compare(self, n_add: int = 4, **kwargs) -> DesignComparison:
         """Ask whether ``n_add`` more runs are worth it (via propose + compare)."""

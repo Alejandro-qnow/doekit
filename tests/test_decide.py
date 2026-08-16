@@ -158,6 +158,20 @@ def test_experiment_decide_next_end_to_end():
     assert decision.action in {"augment", "refine", "stop", "redesign"}
 
 
+def test_experiment_decide_next_attaches_diagnostics():
+    # Graduated from doekit-enhanced: decide_next runs diagnose_step automatically
+    # and rides the report in metadata (schema doekit.DiagnosticsReport/1).
+    d, cols, y = _rsm()
+    exp = ed.experiment(design=d, model=d.model, responses=["y"])
+    exp.ingest(y)
+    decision = exp.decide_next(n_add=3, budget=d.n_runs + 6)
+    diag = decision.metadata["diagnostics"]
+    assert diag["schema"] == "doekit.DiagnosticsReport/1"
+    assert isinstance(diag["issues"], list)
+    assert "has_blockers" in diag
+    json.dumps(decision.to_dict())  # diagnostics stay JSON-safe end to end
+
+
 def test_experiment_decide_next_optimize_intent():
     d, cols, y = _rsm()
     exp = ed.experiment(design=d, model=d.model, responses=["y"])
