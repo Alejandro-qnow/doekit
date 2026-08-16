@@ -5,9 +5,10 @@ description: >-
   matrix → ingest responses → analyze → next runs. Use for screening, RSM,
   optimal designs, design quality (D/A/G, FDS, power, VIF, aliases), sequential
   augmentation, response optimization (surrogate + acquisition: EI/UCB/EHVI,
-  single or multi-objective/Pareto), mixed/blocked analysis, mixture or
-  split-plot, or iterative experimental research (diseño de experimentos, criba,
-  how many runs, bayesian optimization, optimize the yield).
+  single or multi-objective/Pareto), autonomous decision (stop/augment/refine/
+  redesign), result interpretation and MCP serving, mixed/blocked analysis,
+  mixture or split-plot, or iterative experimental research (diseño de
+  experimentos, criba, how many runs, bayesian optimization, optimize the yield).
 ---
 
 # doekit Experiment Designer
@@ -102,7 +103,8 @@ Pause until the user provides responses. Do not invent `y`.
 | Wrong factors/region, mixture/model mismatch, strong LOF vs assumption | Redesign (`from_goal` / new design) — do not silently augment |
 | Aliases / resolution limits | Do not overclaim effects; say what is confounded |
 
-Argue “N more runs?” only with `compare_designs` / `nxt.comparison` deltas.
+Argue “N more runs?” only with `compare_designs` / `nxt.comparison` deltas, or let
+`exp.decide_next(...)` map the signals to stop | augment | refine | redesign.
 
 ## Intent: learn vs optimize
 
@@ -138,6 +140,35 @@ If LOO coverage is far below nominal (over-confident) or data is scarce, prefer
 `learn` first / gather more runs before trusting `best_so_far`. Backend is GP with
 `doekit[bo]` (scikit-learn), else the dependency-free `OLSSurrogate` — a `caveat`
 says which.
+
+## Agentic layer: interpret · decide · monitor
+
+Read structured signals instead of re-deriving stats. All facts come from doekit;
+never invent an action, an optimum, or a Pareto point.
+
+```python
+view = ed.interpret(result)      # Recommendation / Evaluation / Fit / Proposal / Comparison
+view.for_llm()                   # block to add to your context (facts + warnings + next)
+
+# one engine decides stop | augment | refine | redesign
+decision = exp.decide_next(n_add=4, intent="optimize", budget=40)
+decision.action, decision.confidence, decision.for_llm()
+
+# multi-generation loop: stop when best-so-far plateaus
+decision = exp.decide_next(intent="optimize", history=best_so_far_per_gen)
+```
+
+- `decide_next` reads `comparison`/`worth_it` (learn) or `predicted_improvement`/
+  `explore_exploit` (optimize); **optimize is never penalized** for the
+  D-efficiency drop the surrogate loop can cause.
+- Hard gates win first: rank-deficient → `redesign`, budget exhausted /
+  convergence → `stop`.
+- `ed.check_convergence(history, metric_key="best_so_far")` and
+  `ed.diagnose_step(metrics, ...)` are the monitoring primitives behind it.
+- Meta-learning: `ed.ExperimentHistory.from_project(proj)` → `ed.learn_priors(...)` /
+  `ed.historical_recommendation(...)` transfer signals from past waves.
+- Serving over MCP: `python -m doekit.adapters.mcp` (extra `doekit[mcp]`) exposes
+  recommend / evaluate / propose+decide as tools.
 
 ## Resume
 

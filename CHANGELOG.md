@@ -6,6 +6,33 @@ proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-16
+
+### Añadido — agentic-core (interpret · decide · monitor · memoria · MCP)
+Absorbe al core lo que un agente necesita para decidir cuándo actuar y cuándo no
+confiar en sí mismo. Migrado desde el prototipo `doekit-enhanced` siguiendo la
+arquitectura por capas (sin paquete aparte, sin shims, sin retrocompatibilidad).
+- **`ed.interpret(result)` → `Interpretation`** (`doekit.Interpretation/1`):
+  lectura uniforme de Recommendation / DesignEvaluation / FitResult /
+  NextRunsProposal / DesignComparison; `for_llm()` (bloque de contexto) y
+  `to_dict()`. Compone `rationale`/`caveats`/`summary`; nunca inventa cifras.
+- **Motor de decisión** (`orchestration/decide`): `decide_next_action` /
+  `Experiment.decide_next()` → `stop | augment | refine | redesign`
+  (`doekit.Decision/1`). Scoring intención-consciente: `optimize` se puntúa por
+  `predicted_improvement`/explore-exploit y **no** penaliza la caída de
+  D-efficiency. Políticas `Threshold`/`RiskAdaptive`/`BudgetAware`. El
+  `gate_board` de `AutomaticConclusions` **delega** en este motor (una sola lógica).
+- **Monitoring secuencial**: `check_convergence` (`doekit.ConvergenceResult/1`,
+  alimenta el motor) y `diagnose_step` (`doekit.DiagnosticsReport/1`).
+- **Memoria histórica** (`orchestration/advise`): `ExperimentHistory`
+  (`from_project` usa el workspace proyecto→waves como store), `learn_priors`,
+  `historical_recommendation`.
+- **Adapter MCP** (`adapters/mcp.py`, extra `mcp` = fastmcp): expone
+  recommend / evaluate / propose (learn|optimize) + interpret + decide como
+  tools; import perezoso (`import doekit` no requiere fastmcp).
+- Skill/reference de agentes y `project/ROADMAP.md` actualizados;
+  `project/AUDIT_AGENTIC_CORE.md` documenta drift nulo y legitimidad de tests.
+
 ## [0.8.0] - 2026-08-16
 
 ### Añadido — loop de optimización secuencial (surrogate + adquisición)

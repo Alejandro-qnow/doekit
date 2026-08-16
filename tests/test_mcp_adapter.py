@@ -71,7 +71,6 @@ def test_tool_propose_rejects_length_mismatch():
 
 
 def test_build_server_requires_fastmcp():
-    pytest.importorskip  # noqa: B018
     try:
         import fastmcp  # noqa: F401
     except ImportError:

@@ -48,6 +48,28 @@ Response optimization (move the result), the complement of learn (sharpen the mo
 exploring/exploiting/balanced), `surrogate`, `acquisition_values`. All in `to_dict()`
 (`surrogate` → kind + calibration summary).
 
+## Agentic layer: interpret · decide · monitor · memory · MCP
+
+Structured signals for agents; every fact is composed from doekit results (never invented).
+
+| Call | Purpose |
+|------|---------|
+| `ed.interpret(result)` → `Interpretation` | Uniform reading of Recommendation/Evaluation/Fit/Proposal/Comparison; `.for_llm()`, `.to_dict()` (`doekit.Interpretation/1`) |
+| `exp.decide_next(n_add=…, intent=…, budget=…, history=…)` → `Decision` | Action `stop`/`augment`/`refine`/`redesign` (`doekit.Decision/1`) |
+| `ed.decide_next_action(ctx, ...)` / `ed.context_from_proposal(proposal, budget_total=…, budget_spent=…)` | Engine + context factory |
+| `ed.ContinuationScorer`, `ed.ThresholdPolicy`/`RiskAdaptivePolicy`/`BudgetAwarePolicy` | Pluggable scoring / policies |
+| `ed.check_convergence(history, metric_key="best_so_far")` → `ConvergenceResult` | Marginal-gain stop signal (feeds the engine) |
+| `ed.diagnose_step(metrics, budget_remaining=…, uncertainty=…)` → `DiagnosticsReport` | Per-wave warnings (power, G-eff drop, budget, uncertainty) |
+| `ed.ExperimentHistory.from_project(proj)` / `ed.learn_priors(...)` / `ed.historical_recommendation(...)` | Meta-learning from past waves (store = workspace) |
+| `python -m doekit.adapters.mcp` (extra `[mcp]`) | Serve recommend / evaluate / propose+decide as MCP tools |
+
+- Decision is **intent-aware**: learn scores efficiency/power deltas; optimize
+  scores `predicted_improvement` + explore/exploit and does *not* penalize a
+  D-efficiency drop.
+- Hard gates first: rank-deficient → `redesign`; budget exhausted / convergence → `stop`.
+- `gate_board.process.status` (in `AutomaticConclusions`) is produced by this same
+  engine — one decision logic, not two.
+
 ## Recommendation
 
 Fields: `method`, `design`, `model`, `rationale`, `table`, `caveats`, `scenario`.
@@ -113,6 +135,10 @@ Optimize: `surrogate_surface`, `acquisition_plot`, `convergence_plot`,
 | `Recommendation` | `recommend_design(...).to_dict()` |
 | `doekit.NextRunsProposal/1` | `propose_next_runs(...).to_dict()` (learn + optimize fields) |
 | `doekit.DesignComparison/1` | `compare_designs(...).to_dict()` |
+| `doekit.Interpretation/1` | `interpret(result).to_dict()` |
+| `doekit.Decision/1` | `decide_next_action(...).to_dict()` / `exp.decide_next(...)` |
+| `doekit.ConvergenceResult/1` · `doekit.DiagnosticsReport/1` | `check_convergence(...)` · `diagnose_step(...)` |
+| `doekit.ExperimentRecord/1` · `doekit.PriorEstimate/1` | history / `learn_priors(...)` |
 | `doekit.ExperimentProject/1` | `PROJECT.json` |
 | `doekit.WaveManifest/1` | `waves/wave_NNN/manifest.json` |
 | `doekit.AutomaticConclusions/1` | `automatic-conclusions/conclusions.json` |
