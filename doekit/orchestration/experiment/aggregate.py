@@ -223,20 +223,29 @@ class Experiment:
     def decide_next(self, n_add: int = 4, *, intent: str = "learn",
                     budget: Optional[int] = None, risk_tolerance: str = "moderate",
                     proposal: Optional[NextRunsProposal] = None,
-                    use_calibration: bool = False, scorer=None, policy=None,
-                    **kwargs):
+                    use_calibration: bool = False, history=None,
+                    scorer=None, policy=None, **kwargs):
         """Decide the next action (stop / augment / refine / redesign).
 
         Proposes the next batch (unless ``proposal`` is given) and feeds its
         signals to the decision engine — comparison deltas + ``worth_it`` for
         ``learn``, ``predicted_improvement`` / ``explore_exploit`` for
-        ``optimize`` — together with the run budget and design quality.
+        ``optimize`` — together with the run budget and design quality. When
+        ``history`` is given, convergence is checked and can force a stop.
+
+        Parameters
+        ----------
+        history : iterable, optional
+            Per-generation values for :func:`~doekit.orchestration.decide.check_convergence`
+            (``best_so_far`` for optimize, a delta metric for learn).
 
         Returns
         -------
         doekit.orchestration.decide.Decision
         """
-        from ..decide import decide_next_action, context_from_proposal  # noqa: PLC0415
+        from ..decide import (  # noqa: PLC0415
+            decide_next_action, context_from_proposal, check_convergence,
+        )
         if proposal is None:
             proposal = self.next(n_add=n_add, intent=intent, **kwargs)
         budget_total = budget if budget is not None else int(self.metadata.get("budget") or 0)
@@ -247,7 +256,12 @@ class Experiment:
         if (self.evaluation is not None
                 and self.evaluation.efficiencies.get("rank_deficient")):
             ctx.quality = "rank_deficient"
-        return decide_next_action(ctx, scorer=scorer, policy=policy)
+        convergence = None
+        if history is not None:
+            metric_key = "best_so_far" if intent == "optimize" else "delta_D_efficiency"
+            convergence = check_convergence(history, metric_key=metric_key)
+        return decide_next_action(ctx, scorer=scorer, policy=policy,
+                                  convergence=convergence)
 
     def compare(self, n_add: int = 4, **kwargs) -> DesignComparison:
         """Ask whether ``n_add`` more runs are worth it (via propose + compare)."""

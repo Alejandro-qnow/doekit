@@ -17,6 +17,13 @@ from .engine import (
     decide_next_action,
     context_from_proposal,
 )
+from .monitoring import (
+    ConvergenceResult,
+    check_convergence,
+    DiagnosticIssue,
+    DiagnosticsReport,
+    diagnose_step,
+)
 
 __all__ = [
     "Decision",
@@ -29,4 +36,9 @@ __all__ = [
     "BudgetAwarePolicy",
     "decide_next_action",
     "context_from_proposal",
+    "ConvergenceResult",
+    "check_convergence",
+    "DiagnosticIssue",
+    "DiagnosticsReport",
+    "diagnose_step",
 ]

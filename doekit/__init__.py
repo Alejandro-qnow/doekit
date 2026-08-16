@@ -52,7 +52,9 @@ from .orchestration.optimize import (expected_improvement,
 from .orchestration.decide import (Decision, DecisionContext, DecisionScore,
                                    decide_next_action, context_from_proposal,
                                    ContinuationScorer, ThresholdPolicy,
-                                   RiskAdaptivePolicy, BudgetAwarePolicy)
+                                   RiskAdaptivePolicy, BudgetAwarePolicy,
+                                   ConvergenceResult, check_convergence,
+                                   DiagnosticsReport, diagnose_step)
 from .orchestration.experiment import Experiment, experiment, desirability_scores
 from .presentation.export import run_sheet, export_csv, export_excel
 from .presentation.workspace import (
@@ -105,6 +107,8 @@ __all__ = [
     "Decision", "DecisionContext", "DecisionScore", "decide_next_action",
     "context_from_proposal", "ContinuationScorer", "ThresholdPolicy",
     "RiskAdaptivePolicy", "BudgetAwarePolicy",
+    # sequential monitoring (convergence + step diagnostics)
+    "ConvergenceResult", "check_convergence", "DiagnosticsReport", "diagnose_step",
     # experiment aggregate
     "Experiment", "experiment", "desirability_scores",
     # experiment workspace (traceable project → waves)
