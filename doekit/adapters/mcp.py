@@ -134,7 +134,12 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
     }
 
 
-TOOLS = (tool_recommend, tool_evaluate, tool_propose_and_decide)
+# Agent-facing tool name -> implementation (clean names for the LLM).
+TOOLS = {
+    "recommend": tool_recommend,
+    "evaluate": tool_evaluate,
+    "propose_and_decide": tool_propose_and_decide,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +150,8 @@ def build_server(name: str = "doekit"):
     """Create a FastMCP server exposing the doekit tools (requires ``doekit[mcp]``)."""
     FastMCP = _require_fastmcp()
     server = FastMCP(name)
-    for fn in TOOLS:
-        server.tool()(fn)
+    for tool_name, fn in TOOLS.items():
+        server.tool(name=tool_name)(fn)
     return server
 
 
