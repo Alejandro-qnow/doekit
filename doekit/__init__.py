@@ -49,6 +49,10 @@ from .orchestration.optimize import (expected_improvement,
                                      expected_hypervolume_improvement,
                                      get_acquisition, pareto_front, pareto_mask,
                                      dominates, hypervolume)
+from .orchestration.decide import (Decision, DecisionContext, DecisionScore,
+                                   decide_next_action, context_from_proposal,
+                                   ContinuationScorer, ThresholdPolicy,
+                                   RiskAdaptivePolicy, BudgetAwarePolicy)
 from .orchestration.experiment import Experiment, experiment, desirability_scores
 from .presentation.export import run_sheet, export_csv, export_excel
 from .presentation.workspace import (
@@ -97,6 +101,10 @@ __all__ = [
     "expected_improvement", "probability_of_improvement",
     "upper_confidence_bound", "expected_hypervolume_improvement",
     "get_acquisition", "pareto_front", "pareto_mask", "dominates", "hypervolume",
+    # decision engine (stop / augment / refine / redesign)
+    "Decision", "DecisionContext", "DecisionScore", "decide_next_action",
+    "context_from_proposal", "ContinuationScorer", "ThresholdPolicy",
+    "RiskAdaptivePolicy", "BudgetAwarePolicy",
     # experiment aggregate
     "Experiment", "experiment", "desirability_scores",
     # experiment workspace (traceable project → waves)

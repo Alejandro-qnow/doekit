@@ -104,39 +104,45 @@ def _process_gate(
     comparison: Optional[Mapping[str, Any]],
     unknowns: Sequence[str],
 ) -> dict:
-    """Suggest stop | augment | redesign with required evidence fields."""
+    """Suggest stop | augment | redesign, delegating to the decision engine.
+
+    The engine is the single source of decision logic; here we build a gate-mode
+    context (no scoring metrics, just quality/inference/worth_it) and translate
+    its :class:`Decision` back into the ``gate_board`` process vocabulary.
+    """
+    from ...orchestration.decide import (  # noqa: PLC0415
+        DecisionContext, decide_next_action,
+    )
+
+    worth_it = comparison.get("worth_it") if comparison is not None else None
+    ctx = DecisionContext(
+        quality=quality,
+        inference=inference.get("status"),
+        worth_it=worth_it,
+        unknowns=list(unknowns),
+    )
+    decision = decide_next_action(ctx)
+
     evidence: dict[str, Any] = {}
-    if "rank_deficient" == quality:
-        return {
-            "status": "redesign",
-            "evidence": {"quality": quality, "reason": "rank_deficient"},
-        }
     if comparison is not None and "worth_it" in comparison:
-        evidence["worth_it"] = comparison.get("worth_it")
+        evidence["worth_it"] = worth_it
         evidence["comparison_summary"] = comparison.get("summary")
-        if comparison.get("worth_it") is True:
-            return {"status": "augment", "evidence": evidence}
-    if inference.get("status") == "no_response":
-        return {
-            "status": "stop",
-            "evidence": {**evidence, "reason": "awaiting_response",
-                         "unknowns": list(unknowns)},
-        }
-    if inference.get("status") == "saturated_no_test":
-        return {
-            "status": "augment",
-            "evidence": {**evidence, "reason": "saturated_fit"},
-        }
-    # Default: stop; agent may still choose augment from worth_it / judgment
-    return {
-        "status": "stop",
-        "evidence": {
-            **evidence,
-            "quality": quality,
-            "inference": inference.get("status"),
-            "note": "Default stop; augment only with comparison.worth_it or explicit budget.",
-        },
-    }
+    reason = decision.metadata.get("reason")
+    if reason:
+        evidence["reason"] = reason
+    if decision.action == "redesign":
+        evidence["quality"] = quality
+    if decision.gate_status == "stop" and reason != "awaiting_response":
+        evidence.setdefault("quality", quality)
+        evidence.setdefault("inference", inference.get("status"))
+        evidence.setdefault(
+            "note",
+            "Default stop; augment only with comparison.worth_it or explicit budget.",
+        )
+    if reason == "awaiting_response":
+        evidence["unknowns"] = list(unknowns)
+    return {"status": decision.gate_status, "evidence": evidence,
+            "confidence": decision.confidence}
 
 
 def _collect_rules(

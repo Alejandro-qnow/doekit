@@ -220,6 +220,35 @@ class Experiment:
         return propose_next_runs(self.design, response=resp, n_add=n_add,
                                  model=self.model, intent=intent, **kwargs)
 
+    def decide_next(self, n_add: int = 4, *, intent: str = "learn",
+                    budget: Optional[int] = None, risk_tolerance: str = "moderate",
+                    proposal: Optional[NextRunsProposal] = None,
+                    use_calibration: bool = False, scorer=None, policy=None,
+                    **kwargs):
+        """Decide the next action (stop / augment / refine / redesign).
+
+        Proposes the next batch (unless ``proposal`` is given) and feeds its
+        signals to the decision engine — comparison deltas + ``worth_it`` for
+        ``learn``, ``predicted_improvement`` / ``explore_exploit`` for
+        ``optimize`` — together with the run budget and design quality.
+
+        Returns
+        -------
+        doekit.orchestration.decide.Decision
+        """
+        from ..decide import decide_next_action, context_from_proposal  # noqa: PLC0415
+        if proposal is None:
+            proposal = self.next(n_add=n_add, intent=intent, **kwargs)
+        budget_total = budget if budget is not None else int(self.metadata.get("budget") or 0)
+        ctx = context_from_proposal(
+            proposal, budget_total=budget_total, budget_spent=self.design.n_runs,
+            risk_tolerance=risk_tolerance, use_calibration=use_calibration,
+        )
+        if (self.evaluation is not None
+                and self.evaluation.efficiencies.get("rank_deficient")):
+            ctx.quality = "rank_deficient"
+        return decide_next_action(ctx, scorer=scorer, policy=policy)
+
     def compare(self, n_add: int = 4, **kwargs) -> DesignComparison:
         """Ask whether ``n_add`` more runs are worth it (via propose + compare)."""
         prop = self.next(n_add=n_add, **kwargs) if self.response is not None else None
