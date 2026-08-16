@@ -116,8 +116,14 @@ def tool_evaluate(design_type: str, factors: dict,
 def tool_propose_and_decide(design_type: str, factors: dict, response: list,
                             model_order: str = "quadratic", n_add: int = 4,
                             intent: str = "learn", acquisition: Optional[str] = None,
-                            budget: Optional[int] = None, seed: int = 0) -> dict:
-    """Propose the next wave (learn/optimize), interpret and decide the next action."""
+                            budget: Optional[int] = None, seed: int = 0,
+                            history: Optional[list] = None) -> dict:
+    """Propose the next wave (learn/optimize), interpret and decide the next action.
+
+    ``history`` (per-generation ``best_so_far`` for optimize, a delta metric for
+    learn) enables the convergence stop gate. The decision always carries a
+    ``diagnostics`` report (power / G-eff / budget / uncertainty / convergence).
+    """
     fd = _factor_dict(factors)
     builders = {"central_composite": ed.central_composite,
                 "box_behnken": ed.box_behnken}
@@ -142,7 +148,17 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
                                     intent=intent, **kwargs)
     ctx = ed.context_from_proposal(
         proposal, budget_total=int(budget or 0), budget_spent=design.n_runs)
-    decision = ed.decide_next_action(ctx)
+    # Convergence stop gate (optional): needs a per-generation history.
+    convergence = None
+    if history is not None:
+        metric_key = "best_so_far" if intent == "optimize" else "delta_D_efficiency"
+        convergence = ed.check_convergence(list(history), metric_key=metric_key)
+    decision = ed.decide_next_action(ctx, convergence=convergence)
+    # Per-step diagnostics ride along so the agent sees the same monitoring
+    # signals the core exposes (power, G-eff, budget, uncertainty, convergence).
+    diagnostics = ed.diagnose_step(
+        ctx.metrics, budget_remaining=ctx.budget_remaining,
+        uncertainty=ctx.uncertainty, convergence=convergence)
     view = ed.interpret(proposal)
     out = {
         "intent": proposal.intent,
@@ -150,8 +166,11 @@ def tool_propose_and_decide(design_type: str, factors: dict, response: list,
         "proposed_runs": proposal.added.matrix.to_dict("records"),
         "interpretation": view.to_dict(),
         "decision": decision.to_dict(),
+        "diagnostics": diagnostics.to_dict(),
         "context_addition": (view.for_llm() + "\n\n" + decision.for_llm()),
     }
+    if convergence is not None:
+        out["convergence"] = convergence.to_dict()
     calibration = _surrogate_calibration(getattr(proposal, "surrogate", None))
     if calibration is not None:
         out["calibration"] = calibration

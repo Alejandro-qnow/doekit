@@ -52,6 +52,8 @@ def test_tool_propose_and_decide_learn():
     assert out["decision"]["schema"] == "doekit.Decision/1"
     assert out["decision"]["action"] in {"augment", "refine", "stop", "redesign"}
     assert "calibration" not in out  # learn carries no surrogate to audit
+    assert out["diagnostics"]["schema"] == "doekit.DiagnosticsReport/1"
+    assert "convergence" not in out  # no history -> no convergence gate
     json.dumps(out)
 
 
@@ -68,6 +70,23 @@ def test_tool_propose_and_decide_optimize():
     cal = out["calibration"]
     assert cal["kind"] in {"GPSurrogate", "OLSSurrogate"}
     assert "coverage" in cal and "rmse_standardized" in cal
+    # optimize carries predicted_improvement, not power deltas: no spurious gate.
+    codes = {i["code"] for i in out["diagnostics"]["issues"]}
+    assert "LOW_POWER_GAIN" not in codes
+    json.dumps(out)
+
+
+def test_tool_propose_and_decide_history_triggers_convergence_stop():
+    # A plateaued best_so_far history must reach the convergence gate and stop.
+    y = _ccd_response(seed=1)
+    out = mcp.tool_propose_and_decide(
+        "central_composite", FACTORS, y, n_add=2, intent="optimize",
+        acquisition="ei", budget=len(y) + 6,
+        history=[10.0, 10.05, 10.06, 10.07])
+    assert out["convergence"]["should_stop"] is True
+    assert out["decision"]["action"] == "stop"
+    assert any(i["code"] == "CONVERGENCE_REACHED"
+               for i in out["diagnostics"]["issues"])
     json.dumps(out)
 
 

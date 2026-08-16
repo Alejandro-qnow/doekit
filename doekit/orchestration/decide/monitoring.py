@@ -205,6 +205,8 @@ def diagnose_step(metrics: dict, *, budget_remaining: Optional[float] = None,
     ----------
     metrics : dict
         Step deltas (``delta_mean_power``, ``delta_G_efficiency``, ``n_add``).
+        The power/prediction gates fire only when their key is present (learn);
+        optimize steps carry ``predicted_improvement`` and skip them.
     budget_remaining : float, optional
         Remaining runs; a proposal exceeding it is a blocking error.
     uncertainty : float, optional
@@ -217,23 +219,28 @@ def diagnose_step(metrics: dict, *, budget_remaining: Optional[float] = None,
     DiagnosticsReport
     """
     issues: list[DiagnosticIssue] = []
-    d_power = float(metrics.get("delta_mean_power", 0.0))
-    d_g = float(metrics.get("delta_G_efficiency", 0.0))
     n_add = float(metrics.get("n_add", metrics.get("extra_runs", 0.0)))
 
-    if d_power < min_power_gain:
-        issues.append(DiagnosticIssue(
-            "LOW_POWER_GAIN", "warning",
-            f"Marginal power gain ({d_power:.4f}) below the expected minimum "
-            f"({min_power_gain:.4f}).",
-            "Consider focused replication or a model tweak before adding runs.",
-            {"delta_mean_power": d_power}))
-    if d_g <= max_negative_g_eff:
-        issues.append(DiagnosticIssue(
-            "PREDICTION_DEGRADATION", "warning",
-            f"Notable G-efficiency drop ({d_g:.3f}).",
-            "Review the estimation-precision vs prediction trade-off.",
-            {"delta_G_efficiency": d_g}))
+    # Precision/prediction gates only apply when the deltas are present (learn).
+    # Optimize proposals carry ``predicted_improvement`` instead — gating on a
+    # missing key would raise a spurious LOW_POWER_GAIN there.
+    if "delta_mean_power" in metrics:
+        d_power = float(metrics["delta_mean_power"])
+        if d_power < min_power_gain:
+            issues.append(DiagnosticIssue(
+                "LOW_POWER_GAIN", "warning",
+                f"Marginal power gain ({d_power:.4f}) below the expected minimum "
+                f"({min_power_gain:.4f}).",
+                "Consider focused replication or a model tweak before adding runs.",
+                {"delta_mean_power": d_power}))
+    if "delta_G_efficiency" in metrics:
+        d_g = float(metrics["delta_G_efficiency"])
+        if d_g <= max_negative_g_eff:
+            issues.append(DiagnosticIssue(
+                "PREDICTION_DEGRADATION", "warning",
+                f"Notable G-efficiency drop ({d_g:.3f}).",
+                "Review the estimation-precision vs prediction trade-off.",
+                {"delta_G_efficiency": d_g}))
     if budget_remaining is not None and n_add > budget_remaining:
         issues.append(DiagnosticIssue(
             "BUDGET_OVERFLOW", "error",

@@ -76,6 +76,17 @@ def test_diagnose_flags_prediction_degradation_and_power():
     assert not rep.has_blockers
 
 
+def test_diagnose_optimize_metrics_no_spurious_power_gate():
+    # Optimize steps carry predicted_improvement, not delta_mean_power: the
+    # power/prediction gates must stay silent instead of firing on a 0.0 default.
+    rep = diagnose_step({"predicted_improvement": 1.1, "n_add": 4},
+                        budget_remaining=10, uncertainty=0.15)
+    codes = {i.code for i in rep.issues}
+    assert "LOW_POWER_GAIN" not in codes
+    assert "PREDICTION_DEGRADATION" not in codes
+    assert not rep.has_issues
+
+
 def test_diagnose_budget_overflow_is_blocker():
     rep = diagnose_step({"n_add": 8, "delta_mean_power": 0.2}, budget_remaining=3)
     assert rep.has_blockers

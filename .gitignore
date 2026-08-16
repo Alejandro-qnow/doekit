@@ -29,3 +29,5 @@ notebooks/reports/
 examples/reports/
 .claude/
 .cursor/
+
+experiments/

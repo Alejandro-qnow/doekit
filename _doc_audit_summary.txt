@@ -1,0 +1,621 @@
+﻿PUBLIC MODULES WITH USER-FACING EXPORTS
+================================================================================
+
+FILE: doekit/_compat.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 0
+  one-line only: maybe_report
+
+FILE: doekit/adapters/bo.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: candidates_from_bounds, candidates_from_skopt_space
+
+FILE: doekit/adapters/mcp.py
+  module_doc: True
+  public defs/classes: 5 (full_numpy=0, brief=1, one_line=3, missing=1); public methods scanned: 0
+  brief (multi-line, no sections): tool_propose_and_decide
+  one-line only: tool_recommend, tool_evaluate, build_server
+  MISSING docs: main
+
+FILE: doekit/assessment/analysis/adapters/statsmodels_backend.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 1
+  one-line only: StatsmodelsBackend
+  methods MISSING docs: StatsmodelsBackend.fit_ols
+
+FILE: doekit/assessment/analysis/anova.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: anova_table
+
+FILE: doekit/assessment/analysis/effects.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: main_effects, half_normal_data
+
+FILE: doekit/assessment/analysis/helpers.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: attach_blocks
+
+FILE: doekit/assessment/analysis/lof.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: lack_of_fit
+
+FILE: doekit/assessment/analysis/mixed.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: fit_mixed_model
+
+FILE: doekit/assessment/analysis/ols.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: fit_linear_model
+
+FILE: doekit/assessment/analysis/ports.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 1
+  one-line only: EstimatorBackend
+
+FILE: doekit/assessment/analysis/results.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 7
+  full NumPy sections: FitResult, MixedFitResult
+
+FILE: doekit/assessment/evaluation/metrics.py
+  module_doc: True
+  public defs/classes: 7 (full_numpy=7, brief=0, one_line=0, missing=0); public methods scanned: 6
+  HAS Formulas: efficiencies, power_analysis, vif, alias_matrix, fds_data
+  HAS Examples: efficiencies, power_analysis, vif, alias_matrix, fds_data, DesignEvaluation, evaluate
+  full NumPy sections: efficiencies, power_analysis, vif, alias_matrix, fds_data, DesignEvaluation, evaluate
+
+FILE: doekit/assessment/surrogate/base.py
+  module_doc: True
+  public defs/classes: 7 (full_numpy=2, brief=2, one_line=3, missing=0); public methods scanned: 2
+  full NumPy sections: loo_calibration, fit_surrogate
+  brief (multi-line, no sections): Surrogate, encode_features
+  one-line only: infer_factors, as_factor_frame, resolve_surrogate_model
+
+FILE: doekit/assessment/surrogate/gp.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 4
+  one-line only: GPSurrogate
+  methods MISSING docs: GPSurrogate.__init__
+
+FILE: doekit/assessment/surrogate/ols.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 4
+  one-line only: OLSSurrogate
+  methods MISSING docs: OLSSurrogate.__init__
+
+FILE: doekit/assessment/units.py
+  module_doc: True
+  public defs/classes: 4 (full_numpy=1, brief=0, one_line=3, missing=0); public methods scanned: 0
+  full NumPy sections: resolve_model
+  one-line only: coded_frame, natural_frame, frame_for
+
+FILE: doekit/cli.py
+  module_doc: True
+  public defs/classes: 7 (full_numpy=0, brief=0, one_line=0, missing=7); public methods scanned: 0
+  MISSING docs: cmd_recommend, cmd_evaluate, cmd_experiment, cmd_project_init, cmd_project_sync, cmd_project_conclude, main
+
+FILE: doekit/domain/constraints.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=1, brief=1, one_line=0, missing=0); public methods scanned: 3
+  full NumPy sections: Constraints
+  brief (multi-line, no sections): coerce_constraints
+  methods MISSING docs: Constraints.wants_split_plot, Constraints.to_dict
+
+FILE: doekit/domain/criteria/base.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=1, one_line=2, missing=0); public methods scanned: 1
+  brief (multi-line, no sections): score_criterion
+  one-line only: CriterionContext, Criterion
+  methods MISSING docs: Criterion.__call__
+
+FILE: doekit/domain/criteria/functions.py
+  module_doc: True
+  public defs/classes: 8 (full_numpy=0, brief=0, one_line=8, missing=0); public methods scanned: 0
+  one-line only: d_criterion, a_criterion, t_criterion, g_criterion, e_criterion, i_criterion, get_criterion, all_criteria
+
+FILE: doekit/domain/criteria/linalg.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=0, one_line=3, missing=0); public methods scanned: 0
+  one-line only: info_matrix, inv_info, leverage
+
+FILE: doekit/domain/design/entity.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=1, one_line=0, missing=0); public methods scanned: 9
+  brief (multi-line, no sections): Design
+  methods MISSING docs: Design.n_runs, Design.n_factors, Design.factor_names, Design.model_matrix, Design.to_dict, Design.to_json, Design.from_dict, Design.from_json
+
+FILE: doekit/domain/design/metadata.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=0, one_line=3, missing=0); public methods scanned: 0
+  one-line only: DesignMetadata, get_kind, with_kind
+
+FILE: doekit/domain/factors/categorical.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 4
+  one-line only: CategoricalFactor
+  methods MISSING docs: CategoricalFactor.is_categorical, CategoricalFactor.encode, CategoricalFactor.decode, CategoricalFactor.to_dict
+
+FILE: doekit/domain/factors/coding.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=0, brief=1, one_line=1, missing=0); public methods scanned: 0
+  brief (multi-line, no sections): encode_frame
+  one-line only: decode_frame
+
+FILE: doekit/domain/factors/continuous.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 3
+  one-line only: ContinuousFactor
+  methods MISSING docs: ContinuousFactor.encode, ContinuousFactor.decode, ContinuousFactor.to_dict
+
+FILE: doekit/domain/factors/discrete.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 3
+  one-line only: DiscreteFactor
+  methods MISSING docs: DiscreteFactor.encode, DiscreteFactor.decode, DiscreteFactor.to_dict
+
+FILE: doekit/domain/factors/mixture.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 4
+  full NumPy sections: MixtureFactor
+  methods MISSING docs: MixtureFactor.is_mixture, MixtureFactor.decode, MixtureFactor.to_dict
+
+FILE: doekit/domain/factors/protocols.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 4
+  one-line only: Factor
+
+FILE: doekit/domain/factors/registry.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=0, one_line=3, missing=0); public methods scanned: 0
+  one-line only: register_factor_type, factor_from_dict, as_factors
+
+FILE: doekit/domain/model/matrix.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=0, one_line=3, missing=0); public methods scanned: 0
+  one-line only: column_block, build_matrix, column_names
+
+FILE: doekit/domain/model/spec.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 12
+  one-line only: Model
+  methods MISSING docs: Model.__init__, Model.from_terms, Model.full_quadratic, Model.main_effects, Model.column_names, Model.matrix, Model.factor_names, Model.to_dict, Model.from_dict
+
+FILE: doekit/domain/model/terms.py
+  module_doc: True
+  public defs/classes: 5 (full_numpy=0, brief=0, one_line=5, missing=0); public methods scanned: 8
+  one-line only: Intercept, Main, Interaction, Power, term_from_dict
+  methods MISSING docs: Intercept.label, Intercept.to_dict, Main.label, Main.to_dict, Interaction.label, Interaction.to_dict, Power.label, Power.to_dict
+
+FILE: doekit/domain/region/base.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 2
+  one-line only: Region
+
+FILE: doekit/domain/region/hypercube.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=1, brief=1, one_line=0, missing=0); public methods scanned: 2
+  full NumPy sections: HypercubeRegion
+  brief (multi-line, no sections): region_from_design
+  methods MISSING docs: HypercubeRegion.sample, HypercubeRegion.contains
+
+FILE: doekit/domain/region/simplex.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 2
+  full NumPy sections: SimplexRegion
+  methods MISSING docs: SimplexRegion.sample, SimplexRegion.contains
+
+FILE: doekit/generation/catalog/_shared.py
+  module_doc: True
+  public defs/classes: 4 (full_numpy=0, brief=1, one_line=3, missing=0); public methods scanned: 0
+  brief (multi-line, no sections): resolve_factors
+  one-line only: decode_coded, is_prime, legendre
+
+FILE: doekit/generation/catalog/definitive.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: definitive_screening
+
+FILE: doekit/generation/catalog/factorial.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: full_factorial, fractional_factorial
+
+FILE: doekit/generation/catalog/mixture.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=1, brief=1, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: simplex_lattice
+  brief (multi-line, no sections): simplex_centroid
+
+FILE: doekit/generation/catalog/random_design.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: random_design, latin_hypercube
+
+FILE: doekit/generation/catalog/registry.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=0, brief=0, one_line=2, missing=0); public methods scanned: 0
+  one-line only: register_design, get_builder
+
+FILE: doekit/generation/catalog/response_surface.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: box_behnken, central_composite
+
+FILE: doekit/generation/catalog/screening.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=3, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: plackett_burman, is_plackett_burman, fold
+
+FILE: doekit/generation/catalog/split_plot.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=1, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: split_plot_design
+
+FILE: doekit/generation/search/optimal.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=3, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: kl_exchange, fedorov_exchange, optimal_design
+
+FILE: doekit/orchestration/advise/history.py
+  module_doc: True
+  public defs/classes: 6 (full_numpy=1, brief=0, one_line=5, missing=0); public methods scanned: 9
+  full NumPy sections: ExperimentRecord
+  one-line only: PriorEstimate, HistoricalRecommendation, ExperimentHistory, learn_priors, historical_recommendation
+  methods MISSING docs: ExperimentRecord.to_dict, ExperimentRecord.from_dict, PriorEstimate.to_dict, HistoricalRecommendation.to_dict, ExperimentHistory.__init__, ExperimentHistory.add, ExperimentHistory.all
+
+FILE: doekit/orchestration/advise/rank.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=1, one_line=0, missing=0); public methods scanned: 0
+  brief (multi-line, no sections): rank_candidates
+
+FILE: doekit/orchestration/advise/recommend.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=1, brief=0, one_line=1, missing=0); public methods scanned: 2
+  full NumPy sections: recommend_design
+  one-line only: Recommendation
+  methods MISSING docs: Recommendation.summary, Recommendation.to_dict
+
+FILE: doekit/orchestration/decide/engine.py
+  module_doc: True
+  public defs/classes: 10 (full_numpy=2, brief=2, one_line=6, missing=0); public methods scanned: 15
+  full NumPy sections: DecisionContext, decide_next_action
+  brief (multi-line, no sections): ContinuationScorer, context_from_proposal
+  one-line only: DecisionScore, Decision, DecisionPolicy, ThresholdPolicy, RiskAdaptivePolicy, BudgetAwarePolicy
+  methods MISSING docs: DecisionContext.budget_remaining, DecisionContext.has_scoring_metrics, DecisionScore.to_dict, Decision.for_llm, ContinuationScorer.__init__, ContinuationScorer.score, DecisionPolicy.decide, ThresholdPolicy.__init__, ThresholdPolicy.decide, RiskAdaptivePolicy.__init__, RiskAdaptivePolicy.decide, BudgetAwarePolicy.__init__, BudgetAwarePolicy.decide
+
+FILE: doekit/orchestration/decide/monitoring.py
+  module_doc: True
+  public defs/classes: 5 (full_numpy=3, brief=0, one_line=2, missing=0); public methods scanned: 5
+  full NumPy sections: ConvergenceResult, check_convergence, diagnose_step
+  one-line only: DiagnosticIssue, DiagnosticsReport
+  methods MISSING docs: ConvergenceResult.to_dict, DiagnosticIssue.to_dict, DiagnosticsReport.has_issues, DiagnosticsReport.has_blockers, DiagnosticsReport.to_dict
+
+FILE: doekit/orchestration/experiment/aggregate.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=3, one_line=0, missing=0); public methods scanned: 18
+  brief (multi-line, no sections): desirability_scores, Experiment, experiment
+
+FILE: doekit/orchestration/optimize/acquisition.py
+  module_doc: True
+  public defs/classes: 5 (full_numpy=2, brief=0, one_line=3, missing=0); public methods scanned: 0
+  full NumPy sections: expected_improvement, expected_hypervolume_improvement
+  one-line only: probability_of_improvement, upper_confidence_bound, get_acquisition
+
+FILE: doekit/orchestration/optimize/pareto.py
+  module_doc: True
+  public defs/classes: 6 (full_numpy=1, brief=0, one_line=5, missing=0); public methods scanned: 0
+  full NumPy sections: hypervolume
+  one-line only: to_max_space, dominates, pareto_mask, pareto_front, default_reference
+
+FILE: doekit/orchestration/sequential/propose.py
+  module_doc: True
+  public defs/classes: 5 (full_numpy=5, brief=0, one_line=0, missing=0); public methods scanned: 3
+  full NumPy sections: augment_design, DesignComparison, compare_designs, NextRunsProposal, propose_next_runs
+  methods MISSING docs: NextRunsProposal.summary
+
+FILE: doekit/presentation/export.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=0, brief=0, one_line=3, missing=0); public methods scanned: 0
+  one-line only: run_sheet, export_csv, export_excel
+
+FILE: doekit/presentation/io/__init__.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=0, brief=0, one_line=2, missing=0); public methods scanned: 0
+  one-line only: write_text, open_browser
+
+FILE: doekit/presentation/narrative/interpret.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=2, brief=0, one_line=0, missing=0); public methods scanned: 2
+  full NumPy sections: Interpretation, interpret
+
+FILE: doekit/presentation/narrative/templates.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=0, one_line=1, missing=0); public methods scanned: 0
+  one-line only: register_kind_label
+
+FILE: doekit/presentation/render/figures_mpl.py
+  module_doc: True
+  public defs/classes: 13 (full_numpy=13, brief=0, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: half_normal_plot, effects_plot, correlation_plot, fds_plot, surrogate_surface, acquisition_plot, convergence_plot, parity_plot, calibration_plot, pareto_plot, slice_plot, power_plot, alias_heatmap
+
+FILE: doekit/presentation/report_impl.py
+  module_doc: True
+  public defs/classes: 3 (full_numpy=2, brief=1, one_line=0, missing=0); public methods scanned: 0
+  full NumPy sections: report_summary, report_html
+  brief (multi-line, no sections): run_report_arg
+
+FILE: doekit/presentation/workspace/conclusions.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=0, brief=0, one_line=2, missing=0); public methods scanned: 0
+  one-line only: build_conclusions, conclusions_to_markdown
+
+FILE: doekit/presentation/workspace/paths.py
+  module_doc: True
+  public defs/classes: 4 (full_numpy=0, brief=0, one_line=4, missing=0); public methods scanned: 0
+  one-line only: slugify, project_dirname, wave_dirname, ensure_wave_layout
+
+FILE: doekit/presentation/workspace/project.py
+  module_doc: True
+  public defs/classes: 4 (full_numpy=0, brief=0, one_line=4, missing=0); public methods scanned: 16
+  one-line only: Wave, ExperimentProject, open_project, project
+  methods MISSING docs: Wave.__init__, Wave.wave_id, Wave.manifest, ExperimentProject.__init__, ExperimentProject.name, ExperimentProject.slug, ExperimentProject.latest_wave, ExperimentProject.get_wave
+
+FILE: doekit/shared/errors.py
+  module_doc: True
+  public defs/classes: 6 (full_numpy=0, brief=0, one_line=6, missing=0); public methods scanned: 0
+  one-line only: DoEError, InapplicableDesign, SingularMatrixError, RankDeficientError, UnknownCriterionError, UnknownFactorTypeError
+
+FILE: doekit/shared/serialize.py
+  module_doc: True
+  public defs/classes: 2 (full_numpy=0, brief=0, one_line=2, missing=0); public methods scanned: 0
+  one-line only: jsonify, as_float_list
+
+FILE: doekit/shared/typing.py
+  module_doc: True
+  public defs/classes: 1 (full_numpy=0, brief=1, one_line=0, missing=0); public methods scanned: 0
+  brief (multi-line, no sections): Space
+
+
+TIER 0 ÔÇö top-level __all__ symbols docstring style
+================================================================================
+
+full_numpy (56):
+  candidates_from_bounds @ doekit/adapters/bo.py [Parameters,Returns]
+  candidates_from_skopt_space @ doekit/adapters/bo.py [Parameters,Returns]
+  anova_table @ doekit/assessment/analysis/anova.py [Parameters,Returns]
+  half_normal_data @ doekit/assessment/analysis/effects.py [Parameters,Returns]
+  main_effects @ doekit/assessment/analysis/effects.py [Parameters,Returns,Raises]
+  attach_blocks @ doekit/assessment/analysis/helpers.py [Parameters,Returns]
+  lack_of_fit @ doekit/assessment/analysis/lof.py [Parameters,Returns,Raises]
+  fit_mixed_model @ doekit/assessment/analysis/mixed.py [Parameters,Returns,Raises]
+  fit_linear_model @ doekit/assessment/analysis/ols.py [Parameters,Returns,Raises]
+  FitResult @ doekit/assessment/analysis/results.py [Attributes]
+  MixedFitResult @ doekit/assessment/analysis/results.py [Attributes]
+  DesignEvaluation @ doekit/assessment/evaluation/metrics.py [Examples,Attributes]
+  alias_matrix @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Examples,Formulas]
+  efficiencies @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Notes,Examples,Formulas]
+  evaluate @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Notes,Examples]
+  fds_data @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Examples,Formulas]
+  power_analysis @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Raises,Examples,Formulas]
+  vif @ doekit/assessment/evaluation/metrics.py [Parameters,Returns,Examples,Formulas]
+  fit_surrogate @ doekit/assessment/surrogate/base.py [Parameters,Returns]
+  loo_calibration @ doekit/assessment/surrogate/base.py [Parameters,Returns]
+  Constraints @ doekit/domain/constraints.py [Parameters]
+  MixtureFactor @ doekit/domain/factors/mixture.py [Parameters]
+  HypercubeRegion @ doekit/domain/region/hypercube.py [Parameters]
+  SimplexRegion @ doekit/domain/region/simplex.py [Parameters]
+  definitive_screening @ doekit/generation/catalog/definitive.py [Parameters,Returns,Raises]
+  fractional_factorial @ doekit/generation/catalog/factorial.py [Parameters,Returns]
+  full_factorial @ doekit/generation/catalog/factorial.py [Parameters,Returns]
+  simplex_lattice @ doekit/generation/catalog/mixture.py [Parameters,Returns]
+  latin_hypercube @ doekit/generation/catalog/random_design.py [Parameters,Returns]
+  random_design @ doekit/generation/catalog/random_design.py [Parameters,Returns]
+  box_behnken @ doekit/generation/catalog/response_surface.py [Parameters,Returns,Raises]
+  central_composite @ doekit/generation/catalog/response_surface.py [Parameters,Returns,Raises]
+  fold @ doekit/generation/catalog/screening.py [Parameters,Returns]
+  is_plackett_burman @ doekit/generation/catalog/screening.py [Parameters,Returns]
+  plackett_burman @ doekit/generation/catalog/screening.py [Parameters,Returns]
+  split_plot_design @ doekit/generation/catalog/split_plot.py [Parameters,Returns]
+  fedorov_exchange @ doekit/generation/search/optimal.py [Parameters,Returns]
+  kl_exchange @ doekit/generation/search/optimal.py [Parameters,Returns]
+  optimal_design @ doekit/generation/search/optimal.py [Parameters,Returns,Raises]
+  ExperimentRecord @ doekit/orchestration/advise/history.py [Attributes]
+  recommend_design @ doekit/orchestration/advise/recommend.py [Parameters]
+  DecisionContext @ doekit/orchestration/decide/engine.py [Attributes]
+  decide_next_action @ doekit/orchestration/decide/engine.py [Parameters,Returns]
+  ConvergenceResult @ doekit/orchestration/decide/monitoring.py [Attributes]
+  check_convergence @ doekit/orchestration/decide/monitoring.py [Parameters,Returns]
+  diagnose_step @ doekit/orchestration/decide/monitoring.py [Parameters,Returns]
+  expected_hypervolume_improvement @ doekit/orchestration/optimize/acquisition.py [Parameters,Returns]
+  expected_improvement @ doekit/orchestration/optimize/acquisition.py [Parameters]
+  hypervolume @ doekit/orchestration/optimize/pareto.py [Parameters]
+  DesignComparison @ doekit/orchestration/sequential/propose.py [Attributes]
+  NextRunsProposal @ doekit/orchestration/sequential/propose.py [Attributes]
+  augment_design @ doekit/orchestration/sequential/propose.py [Parameters,Returns]
+  compare_designs @ doekit/orchestration/sequential/propose.py [Parameters,Returns]
+  propose_next_runs @ doekit/orchestration/sequential/propose.py [Parameters,Returns]
+  Interpretation @ doekit/presentation/narrative/interpret.py [Attributes]
+  interpret @ doekit/presentation/narrative/interpret.py [Parameters,Returns,Raises]
+
+brief (9):
+  Surrogate @ doekit/assessment/surrogate/base.py [-]
+  coerce_constraints @ doekit/domain/constraints.py [-]
+  Design @ doekit/domain/design/entity.py [-]
+  simplex_centroid @ doekit/generation/catalog/mixture.py [-]
+  ContinuationScorer @ doekit/orchestration/decide/engine.py [-]
+  context_from_proposal @ doekit/orchestration/decide/engine.py [-]
+  Experiment @ doekit/orchestration/experiment/aggregate.py [-]
+  desirability_scores @ doekit/orchestration/experiment/aggregate.py [-]
+  experiment @ doekit/orchestration/experiment/aggregate.py [-]
+
+one_line (44):
+  GPSurrogate @ doekit/assessment/surrogate/gp.py [-]
+  OLSSurrogate @ doekit/assessment/surrogate/ols.py [-]
+  a_criterion @ doekit/domain/criteria/functions.py [-]
+  d_criterion @ doekit/domain/criteria/functions.py [-]
+  e_criterion @ doekit/domain/criteria/functions.py [-]
+  g_criterion @ doekit/domain/criteria/functions.py [-]
+  i_criterion @ doekit/domain/criteria/functions.py [-]
+  t_criterion @ doekit/domain/criteria/functions.py [-]
+  CategoricalFactor @ doekit/domain/factors/categorical.py [-]
+  ContinuousFactor @ doekit/domain/factors/continuous.py [-]
+python : Traceback (most recent call last):
+En C:\Users\jefai\AppData\Local\Temp\ps-script-c7d83c65-6e43-48b5-87e5-0a8788686abb.ps1: 84 Carácter: 32
++ ... NG='utf-8'; python d:\projects\doekit\_doc_audit_summary.py 2>&1 | Ou ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "d:\projects\doekit\_doc_audit_summary.py", line 345, in <module>
+  DiscreteFactor @ doekit/domain/factors/discrete.py [-]
+  Factor @ doekit/domain/factors/protocols.py [-]
+  as_factors @ doekit/domain/factors/registry.py [-]
+  factor_from_dict @ doekit/domain/factors/registry.py [-]
+  Model @ doekit/domain/model/spec.py [-]
+  Interaction @ doekit/domain/model/terms.py [-]
+  Intercept @ doekit/domain/model/terms.py [-]
+  Main @ doekit/domain/model/terms.py [-]
+  Power @ doekit/domain/model/terms.py [-]
+  Region @ doekit/domain/region/base.py [-]
+  ExperimentHistory @ doekit/orchestration/advise/history.py [-]
+  historical_recommendation @ doekit/orchestration/advise/history.py [-]
+  learn_priors @ doekit/orchestration/advise/history.py [-]
+  Recommendation @ doekit/orchestration/advise/recommend.py [-]
+  BudgetAwarePolicy @ doekit/orchestration/decide/engine.py [-]
+  Decision @ doekit/orchestration/decide/engine.py [-]
+  DecisionScore @ doekit/orchestration/decide/engine.py [-]
+  RiskAdaptivePolicy @ doekit/orchestration/decide/engine.py [-]
+  ThresholdPolicy @ doekit/orchestration/decide/engine.py [-]
+  DiagnosticsReport @ doekit/orchestration/decide/monitoring.py [-]
+  get_acquisition @ doekit/orchestration/optimize/acquisition.py [-]
+  probability_of_improvement @ doekit/orchestration/optimize/acquisition.py [-]
+  upper_confidence_bound @ doekit/orchestration/optimize/acquisition.py [-]
+  dominates @ doekit/orchestration/optimize/pareto.py [-]
+  pareto_front @ doekit/orchestration/optimize/pareto.py [-]
+  pareto_mask @ doekit/orchestration/optimize/pareto.py [-]
+  export_csv @ doekit/presentation/export.py [-]
+  export_excel @ doekit/presentation/export.py [-]
+  run_sheet @ doekit/presentation/export.py [-]
+  build_conclusions @ doekit/presentation/workspace/conclusions.py [-]
+  ExperimentProject @ doekit/presentation/workspace/project.py [-]
+  Wave @ doekit/presentation/workspace/project.py [-]
+  open_project @ doekit/presentation/workspace/project.py [-]
+  project @ doekit/presentation/workspace/project.py [-]
+
+missing (0):
+
+not_found (4):
+  region_from_design @ domain/region/__init__.py
+  report @ presentation/report.py
+  report_summary @ presentation/report.py
+  DEFAULT_THRESHOLDS @ presentation/workspace/project.py
+    Path(r"d:\projects\doekit\_doc_audit_summary.txt").write_text(
+  File "C:\Users\jefai\AppData\Local\Programs\Python\Python312\Lib\pathlib.py", line 1047, in write_text
+
+
+NEW FEATURE FILES DETAIL
+================================================================================
+
+koekit/adapters/mcp.py: public=5 full=0 brief=1 one=3 miss=1
+  func tool_recommend (one_line; -)
+  func tool_evaluate (one_line; -)
+  func tool_propose_and_decide (brief; -)
+  func build_server (one_line; -)
+  func main (missing; -)
+
+koekit/presentation/workspace/project.py: public=4 full=0 brief=0 one=4 miss=0
+  class Wave (one_line; -)
+  class ExperimentProject (one_line; -)
+  func open_project (one_line; -)
+  func project (one_line; -)
+  method Wave.__init__ (missing; -)
+  method Wave.wave_id (missing; -)
+  method Wave.manifest (missing; -)
+  method Wave.load_experiment (one_line; -)
+  method Wave.ingest_from (one_line; -)
+  method Wave.sync (one_line; -)
+  method Wave.conclude (one_line; -)
+  method ExperimentProject.__init__ (missing; -)
+  method ExperimentProject.name (missing; -)
+  method ExperimentProject.slug (missing; -)
+  method ExperimentProject.create (one_line; -)
+  method ExperimentProject.open (one_line; -)
+  method ExperimentProject.waves (one_line; -)
+  method ExperimentProject.latest_wave (missing; -)
+  method ExperimentProject.get_wave (missing; -)
+  method ExperimentProject.new_wave (one_line; -)
+
+koekit/presentation/workspace/conclusions.py: public=2 full=0 brief=0 one=2 miss=0
+  func build_conclusions (one_line; -)
+  func conclusions_to_markdown (one_line; -)
+
+koekit/presentation/workspace/paths.py: public=4 full=0 brief=0 one=4 miss=0
+  func slugify (one_line; -)
+  func project_dirname (one_line; -)
+  func wave_dirname (one_line; -)
+  func ensure_wave_layout (one_line; -)
+
+koekit/cli.py: public=7 full=0 brief=0 one=0 miss=7
+  func cmd_recommend (missing; -)
+  func cmd_evaluate (missing; -)
+  func cmd_experiment (missing; -)
+  func cmd_project_init (missing; -)
+  func cmd_project_sync (missing; -)
+  func cmd_project_conclude (missing; -)
+  func main (missing; -)
+
+koekit/shared/serialize.py: public=2 full=0 brief=0 one=2 miss=0
+  func jsonify (one_line; -)
+  func as_float_list (one_line; -)
+
+koekit/orchestration/decide/monitoring.py: public=5 full=3 brief=0 one=2 miss=0
+  class ConvergenceResult (full_numpy; Attributes)
+  func check_convergence (full_numpy; Parameters,Returns)
+  class DiagnosticIssue (one_line; -)
+  class DiagnosticsReport (one_line; -)
+  func diagnose_step (full_numpy; Parameters,Returns)
+  method ConvergenceResult.to_dict (missing; -)
+  method DiagnosticIssue.to_dict (missing; -)
+  method DiagnosticsReport.has_issues (missing; -)
+  method DiagnosticsReport.has_blockers (missing; -)
+  method DiagnosticsReport.to_dict (missing; -)
+
+
+AGGREGATE (top-level public func/class only)
+================================================================================
+files_with_public_defs: 68
+{'full_numpy': 72, 'brief': 18, 'one_line': 99, 'missing': 8}
+total public tops: 197
+pct full_numpy: 36.5%
+
+
+WORK QUEUE BY PRIORITY
+================================================================================
+
+Math-heavy T0 symbols missing Formulas section:
+  a_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+  d_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jefai\AppData\Local\Programs\Python\Python312\Lib\pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'd:\\projects\\doekit\\_doc_audit_summary.txt'
+  dominates @ doekit/orchestration/optimize/pareto.py style=one_line sections=[]
+  e_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+  expected_hypervolume_improvement @ doekit/orchestration/optimize/acquisition.py style=full_numpy sections=['Parameters', 'Returns']
+  expected_improvement @ doekit/orchestration/optimize/acquisition.py style=full_numpy sections=['Parameters']
+  g_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+  hypervolume @ doekit/orchestration/optimize/pareto.py style=full_numpy sections=['Parameters']
+  i_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+  pareto_front @ doekit/orchestration/optimize/pareto.py style=one_line sections=[]
+  probability_of_improvement @ doekit/orchestration/optimize/acquisition.py style=one_line sections=[]
+  t_criterion @ doekit/domain/criteria/functions.py style=one_line sections=[]
+  upper_confidence_bound @ doekit/orchestration/optimize/acquisition.py style=one_line sections=[]
