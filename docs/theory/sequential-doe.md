@@ -47,8 +47,12 @@ cmp.table   # Δ D/A/G, SPV_mean, mean_power, n_runs
 
 ## Bridge to Bayesian optimization
 
-Doekit does **not** replace Optuna/Ax. It lets you turn a search space into a
-candidate set and keep evaluating with the same metrics:
+The two intentions share one call: **learn** (this page — sharpen the model) and
+**optimize** (move the result). For doekit's own surrogate + acquisition loop — a GP
+with an OLS prior mean, EI/UCB/PI/EHVI, and LOO calibration — see
+**[Bayesian optimization](bayesian-optimization.md)** (the `intent="optimize"`
+path). doekit also does **not** replace Optuna/Ax: you can turn a search space into
+a candidate set and keep evaluating with the same metrics:
 
 ```python
 cand = ed.candidates_from_bounds([("lr", 1e-4, 1e-1), ("wd", 1e-6, 1e-2)], n=200)

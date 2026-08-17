@@ -27,6 +27,13 @@ cmp = ed.compare_designs(actual, aumentado)
 
 ## Puente a optimización bayesiana
 
+Las dos intenciones comparten una llamada: **aprender** (esta página — afilar el
+modelo) y **optimizar** (mover el resultado). Para el loop de surrogate +
+adquisición propio de doekit — un GP con media a priori OLS, EI/UCB/PI/EHVI y
+calibración LOO — ver **[Optimización bayesiana](bayesian-optimization.md)** (la vía
+`intent="optimize"`). doekit tampoco reemplaza a Optuna/Ax: puedes convertir un
+espacio de búsqueda en un candidate set y seguir evaluando con las mismas métricas:
+
 ```python
 cand = ed.candidates_from_bounds([("lr", 1e-4, 1e-1)], n=200)
 ```

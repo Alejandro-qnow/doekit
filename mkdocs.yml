@@ -57,8 +57,10 @@ plugins:
             Evaluation metrics: Métricas de evaluación
             Blocked & mixed analysis: Análisis con bloques y mixtos
             Sequential DoE: DoE secuencial
+            Bayesian optimization: Optimización bayesiana
             Mixture & split-plot: Mezcla y split-plot
             Reporting: Reporte
+            Agentic layer: Capa agéntica
             Guide: Guía
             Agents: Agentes
             Experiment designer skill: Skill diseñador de experimentos
@@ -119,8 +121,10 @@ nav:
       - Evaluation metrics: theory/evaluation-metrics.md
       - Blocked & mixed analysis: theory/blocked-and-mixed.md
       - Sequential DoE: theory/sequential-doe.md
+      - Bayesian optimization: theory/bayesian-optimization.md
       - Mixture & split-plot: theory/mixture-and-split-plot.md
       - Reporting: theory/reporting.md
+      - Agentic layer: theory/agentic-layer.md
   - Guide:
       - Notebooks: guide/notebooks.md
   - Agents:

@@ -53,7 +53,18 @@ ed.plotting.power_plot(ev.power)
 ed.alias_matrix(bb)               # sesgo por 2FI omitidas
 ```
 
+## Varianza del diseño vs incertidumbre del surrogate
+
+Las métricas de arriba (SPV, FDS, G) son propiedades **a priori** del *diseño*:
+describen la varianza de predicción sobre la región *antes de tener datos*. Cuando
+hay respuestas, el [loop de optimización](bayesian-optimization.md) ajusta un
+surrogate cuyo $\sigma(x)$ **a posteriori** crece lejos de las corridas observadas y
+se audita con la **cobertura leave-one-out**. Usa las métricas del diseño para
+*planificar*; usa la calibración del surrogate para decidir si *confiar en un óptimo
+predicho*.
+
 ## Ver también
 
-- Teoría: [Reporte](reporting.md), [Diseño óptimo](optimal-design.md)
+- Teoría: [Reporte](reporting.md), [Diseño óptimo](optimal-design.md),
+  [Optimización bayesiana](bayesian-optimization.md)
 - API: [`evaluate`, `efficiencies`, `power_analysis`, `vif`, `alias_matrix`, `fds_data`](../api/evaluation.md)

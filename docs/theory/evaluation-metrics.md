@@ -53,7 +53,17 @@ ed.plotting.power_plot(ev.power)
 ed.alias_matrix(bb)               # bias from omitted 2FI
 ```
 
+## Design variance vs surrogate uncertainty
+
+The metrics above (SPV, FDS, G) are **a priori** properties of the *design*: they
+describe prediction variance over the region *before any data*. Once responses
+exist, the [optimize loop](bayesian-optimization.md) fits a surrogate whose
+**posterior** $\sigma(x)$ grows away from the observed runs and is audited by
+**leave-one-out coverage**. Use the design metrics to *plan*; use the surrogate
+calibration to decide whether to *trust a predicted optimum*.
+
 ## See also
 
-- Theory: [Reporting](reporting.md), [Optimal design](optimal-design.md)
+- Theory: [Reporting](reporting.md), [Optimal design](optimal-design.md),
+  [Bayesian optimization](bayesian-optimization.md)
 - API: [`evaluate`, `efficiencies`, `power_analysis`, `vif`, `alias_matrix`, `fds_data`](../api/evaluation.md)
