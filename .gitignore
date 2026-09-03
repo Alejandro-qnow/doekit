@@ -12,7 +12,7 @@ dist/
 project/
 .env
 scripts/
-
+lighthouse
 # uv / entornos
 .venv/
 

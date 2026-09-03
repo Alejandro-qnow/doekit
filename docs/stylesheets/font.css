@@ -1,0 +1,22 @@
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/roboto-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/roboto-latin-wght-italic.woff2")
+    format("woff2-variations");
+}
+
+:root {
+  --md-text-font: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --md-code-font: ui-monospace, "Cascadia Code", Consolas, monospace;
+}

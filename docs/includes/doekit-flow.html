@@ -1,0 +1,137 @@
+<div class="doe-funnel">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 800 200"
+    role="img"
+    aria-labelledby="doe-flow-title doe-flow-desc"
+  >
+    <title id="doe-flow-title">doekit DoE flow</title>
+    <desc id="doe-flow-desc">
+      A user or agent enters Design, then Recommend. Recommend branches to Learn
+      or Optimize; both join at Semantic. A choice then stops or continues back
+      to Design.
+    </desc>
+    <defs>
+      <marker
+        id="doe-arrow"
+        viewBox="0 0 10 10"
+        refX="9"
+        refY="5"
+        markerWidth="7"
+        markerHeight="7"
+        orient="auto"
+      >
+        <path d="M 0 1.2 L 10 5 L 0 8.8 z" class="doe-funnel__marker" />
+      </marker>
+    </defs>
+
+    <path class="doe-funnel__line" d="M22,80 H116" />
+    <path class="doe-funnel__line" d="M210,80 H226" />
+    <path class="doe-funnel__line" d="M342,68 C364,68 372,34 400,34" />
+    <path class="doe-funnel__line" d="M342,92 C364,92 372,138 388,138" />
+    <path class="doe-funnel__line" d="M488,34 C512,34 528,80 548,80" />
+    <path class="doe-funnel__line" d="M500,138 C520,138 532,80 548,80" />
+    <path class="doe-funnel__line" d="M650,80 H670" />
+    <path class="doe-funnel__line" d="M706,80 H760" />
+    <path class="doe-funnel__line" d="M688,98 V176 H163 V98" />
+
+    <circle class="doe-funnel__start" cx="16" cy="80" r="6" />
+    <rect
+      class="doe-funnel__box"
+      x="118"
+      y="62"
+      width="92"
+      height="36"
+      rx="8"
+    />
+    <rect
+      class="doe-funnel__box"
+      x="226"
+      y="62"
+      width="116"
+      height="36"
+      rx="8"
+    />
+    <rect
+      class="doe-funnel__box"
+      x="400"
+      y="16"
+      width="88"
+      height="36"
+      rx="8"
+    />
+    <rect
+      class="doe-funnel__box"
+      x="388"
+      y="120"
+      width="112"
+      height="36"
+      rx="8"
+    />
+    <rect
+      class="doe-funnel__box"
+      x="548"
+      y="62"
+      width="102"
+      height="36"
+      rx="8"
+    />
+    <polygon class="doe-funnel__box" points="688,62 706,80 688,98 670,80" />
+    <circle class="doe-funnel__end-outer" cx="772" cy="80" r="9" />
+    <circle class="doe-funnel__end-inner" cx="772" cy="80" r="5" />
+
+    <text class="doe-funnel__node" x="164" y="80">Design</text>
+    <text class="doe-funnel__node" x="284" y="80">Recommend</text>
+    <text class="doe-funnel__node" x="444" y="34">Learn</text>
+    <text class="doe-funnel__node" x="444" y="138">Optimize</text>
+    <text class="doe-funnel__node" x="599" y="80">Semantic</text>
+
+    <rect
+      class="doe-funnel__chip"
+      x="26"
+      y="46"
+      width="86"
+      height="16"
+      rx="4"
+    />
+    <text class="doe-funnel__label" x="69" y="54">User / Agent</text>
+
+    <rect
+      class="doe-funnel__chip"
+      x="342"
+      y="6"
+      width="54"
+      height="16"
+      rx="4"
+    />
+    <text class="doe-funnel__label" x="369" y="14">if learn</text>
+    <rect
+      class="doe-funnel__chip"
+      x="310"
+      y="154"
+      width="72"
+      height="16"
+      rx="4"
+    />
+    <text class="doe-funnel__label" x="347" y="162">if optimize</text>
+
+    <rect
+      class="doe-funnel__chip"
+      x="712"
+      y="48"
+      width="48"
+      height="16"
+      rx="4"
+    />
+    <text class="doe-funnel__label" x="736" y="56">if stop</text>
+    <rect
+      class="doe-funnel__chip"
+      x="390"
+      y="168"
+      width="72"
+      height="16"
+      rx="4"
+    />
+    <text class="doe-funnel__label" x="426" y="176">if continue</text>
+  </svg>
+</div>

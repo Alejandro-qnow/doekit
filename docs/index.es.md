@@ -14,21 +14,7 @@ respuesta, diseño óptimo, mezcla/split-plot y DoE secuencial (**aprender** u
 **optimizar**), con el flujo de razonamiento *brief → recommend → evaluate → \[lab:
 ingest\] → analyze → **interpret** → decide (stop/augment/refine/redesign) → next*.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Design: User / Agent
-    Design --> Recommend
-    Recommend --> Learn: if learn
-    Recommend --> Optimize: if optimize
-    Learn --> Semantic
-    Optimize --> Semantic
-
-    state best <<choice>>
-    Semantic --> best
-    best --> [*]: if stop
-    best --> Design: if continue
-```
+--8<-- "includes/doekit-flow.html"
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional
 (gráficas y reportes HTML); `doekit[mcp]` sirve las tools para agentes y

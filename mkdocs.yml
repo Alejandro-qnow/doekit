@@ -8,10 +8,17 @@ repo_url: https://github.com/Alejandro-qnow/doekit
 repo_name: Alejandro-qnow/doekit
 copyright: MIT License
 
+hooks:
+  - docs/hooks.py
+
+exclude_docs: |
+  includes/
+
 theme:
   name: material
   custom_dir: overrides
   language: en
+  font: false
   palette:
     - scheme: default
       primary: indigo
@@ -105,10 +112,17 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.snippets:
+      check_paths: true
+      base_path:
+        - docs
+
+extra_css:
+  - stylesheets/font.css
+  - stylesheets/extra.css
 
 extra_javascript:
-  - javascripts/mathjax.js
-  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+  - javascripts/mathjax-loader.js
 
 nav:
   - Home: index.md
