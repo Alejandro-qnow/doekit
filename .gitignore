@@ -19,8 +19,12 @@ lighthouse
 # Sitio de documentacion generado (mkdocs)
 site/
 
+
+
 # Artefactos de ejemplos
 examples/*.png
+docs_v2/
+docs_v3/
 
 # Reportes HTML generados (folder default y modo autocontenido)
 report/
@@ -31,3 +35,19 @@ examples/reports/
 .cursor/
 
 experiments/
+
+# Nextra / Pagefind search index
+**/_pagefind/
+docs_v3/node_modules/
+docs_v3/.next/
+docs_v3/public/_pagefind/
+
+# Fumadocs (docs_v4)
+docs_v4/node_modules/
+docs_v4/.next/
+docs_v4/.source/
+docs_v4/out/
+docs_v4/coverage/
+docs_v4/.vercel/
+docs_v4/next-env.d.ts
+docs_v4/*.tsbuildinfo

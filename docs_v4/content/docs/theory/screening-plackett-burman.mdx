@@ -1,0 +1,54 @@
+---
+title: "Screening: Plackett-Burman"
+description: "With many candidate factors and a tight budget, the first question is not *how much*"
+---
+
+## Motivation
+
+With many candidate factors and a tight budget, the first question is not *how much*
+each factor matters but *which* ones matter at all. Screening designs answer this
+with the fewest possible runs, leaning on the **sparsity-of-effects principle**: only
+a few factors dominate the response.
+
+## Theory
+
+A Plackett-Burman (PB) design estimates $k$ main effects **orthogonally** in
+$N$ runs, where $N$ is a multiple of 4 with $N > k$. Orthogonality means the design
+matrix $D \in \{-1,+1\}^{N\times(N-1)}$ satisfies
+
+$$
+D^\top D = N\, I,
+$$
+
+so the estimated main effects are uncorrelated and each has the smallest possible
+variance for $N$ runs. PB designs are built from **Hadamard matrices** $H$
+($H H^\top = N I$); doekit constructs them via **Sylvester** (powers of two) and
+**Paley I/II** ($q+1$ and $2(q+1)$ for prime $q$), covering the usual
+multiples-of-4 Hadamard orders.
+
+The price of minimal runs: main effects are **aliased with two-factor interactions**
+(resolution III). If interactions are active, they bias the main-effect estimates —
+which is exactly what [folding](fractional-factorial) and
+[definitive screening](definitive-screening) address.
+
+## In doekit
+
+```python
+import doekit as ed
+
+pb = ed.plackett_burman(6)      # 8 runs, 6 factors (+ dummy columns)
+ed.is_plackett_burman(pb)       # True: ±1, zero-sum columns, DᵀD = N·I
+
+# Analyze once you have responses y:
+effects = ed.main_effects(pb, y, scale="effect")   # classic effect = 2·β
+ed.plotting.half_normal_plot(effects.to_numpy(), effects.index.tolist())
+```
+
+The half-normal plot separates the vital few (points pulling away from the line)
+from the trivial many (points on the line).
+
+## See also
+
+- Theory: [Fractional factorial](fractional-factorial),
+  [Definitive screening](definitive-screening)
+- API: [`plackett_burman`, `is_plackett_burman`, `fold`](../api/designs)

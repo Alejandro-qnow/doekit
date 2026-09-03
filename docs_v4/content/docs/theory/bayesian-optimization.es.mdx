@@ -1,0 +1,106 @@
+---
+title: "Optimización bayesiana (el loop optimize)"
+description: "El DoE secuencial tiene dos intenciones que comparten una misma llamada."
+---
+
+El DoE secuencial tiene dos intenciones que comparten una misma llamada.
+**Aprender** afila el *modelo* (aumentación D/I-óptima — ver
+[DoE secuencial](sequential-doe)). **Optimizar** mueve el *resultado*: ajusta un
+surrogate a las respuestas y elige las siguientes corridas por una función de
+adquisición. Desde **doekit 0.8**, `intent="optimize"` en `propose_next_runs` /
+`Experiment.next` cierra ese loop.
+
+| | `intent="learn"` (por defecto) | `intent="optimize"` |
+|--|--|--|
+| Pregunta | *¿Qué factores? ¿Qué precisión?* | *¿Dónde está el mejor ajuste?* |
+| Motor | aumentación D/I-óptima | surrogate + adquisición |
+| Lee | deltas de `comparison` | `best_so_far`, `predicted_improvement`, `explore_exploit` |
+
+## El surrogate
+
+Un surrogate es un modelo probabilístico barato de la respuesta que devuelve una
+**media y una desviación estándar** predictivas, $\hat{f}(x) \to (\mu(x),
+\sigma(x))$. doekit trae dos, tras una misma fábrica `fit_surrogate(design, y,
+kind=...)`:
+
+- **`OLSSurrogate`** (por defecto, sin dependencias): la superficie de respuesta
+  ajustada; $\mu(x)$ es la predicción OLS y $\sigma(x)$ su error estándar de
+  predicción.
+- **`GPSurrogate`** (`doekit[bo]`): un Proceso Gaussiano cuya **media a priori es la
+  superficie OLS**. Con media a priori $m(x)=x^\top\hat\beta$ y kernel $k$, el
+  posterior en $x$ dados los datos $(X, y)$ es
+
+$$
+\mu(x) = m(x) + k_*^\top \big(K + \sigma_n^2 I\big)^{-1}\big(y - m(X)\big),
+\qquad
+\sigma^2(x) = k(x,x) - k_*^\top \big(K + \sigma_n^2 I\big)^{-1} k_*,
+$$
+
+con $k_* = k(X, x)$. El $\sigma(x)$ reportado combina el error estándar del trend,
+el término del posterior GP y el ruido, de modo que **crece lejos de las corridas
+observadas** — la señal honesta que un optimizador necesita para saber dónde está
+adivinando.
+
+### Confía antes de reclamar un óptimo
+
+Un óptimo de aspecto confiado sobre un surrogate mal calibrado es una trampa. doekit
+audita $\sigma(x)$ con la **cobertura de intervalos leave-one-out (LOO)**: para
+niveles nominales (50 %, 80 %, 95 %) mide con qué frecuencia el punto excluido cae
+dentro del intervalo predicho. Una cobertura muy *por debajo* del nominal indica un
+surrogate sobre-confiado.
+
+```python
+sur = ed.fit_surrogate(design, y, kind="auto")   # GP si doekit[bo], si no OLS
+mu, sd = sur.predict(X_new)
+sur.calibration(levels=(0.5, 0.8, 0.95))          # cobertura vs nominal + rmse
+```
+
+## Funciones de adquisición
+
+Dado $(\mu(x), \sigma(x))$ y el mejor valor hasta ahora $f^*$, una adquisición
+puntúa cada candidato equilibrando explotación ($\mu$) contra exploración
+($\sigma$). Con $z = \dfrac{\mu(x) - f^* - \xi}{\sigma(x)}$ y $\Phi, \phi$ la CDF/PDF
+normal estándar:
+
+$$
+\mathrm{EI}(x) = (\mu(x) - f^* - \xi)\,\Phi(z) + \sigma(x)\,\phi(z), \qquad
+\mathrm{PI}(x) = \Phi(z), \qquad
+\mathrm{UCB}(x) = \mu(x) + \kappa\,\sigma(x).
+$$
+
+`get_acquisition("ei"|"ucb"|"pi")` las devuelve; `ei` es la de un solo objetivo por
+defecto. El lote se elige con el esquema *constant-liar* (Kriging-Believer):
+proponer un punto, asumir su valor predicho, reajustar, repetir — así el lote se
+dispersa en vez de agolparse en un solo pico, respetando la región de factores /
+el símplex.
+
+### Multi-objetivo (Pareto / EHVI)
+
+Con varias respuestas y `goals={col: "max"|"min"}` no hay un único mejor: la
+superficie de trade-off es el **frente de Pareto** (puntos no dominados por ningún
+otro). La adquisición por defecto pasa a ser **EHVI** — mejora esperada del
+**hipervolumen** dominado — vía `expected_hypervolume_improvement`, con los helpers
+`pareto_front`, `pareto_mask`, `dominates`, `hypervolume`.
+
+## Ejemplo
+
+```python
+import doekit as ed
+
+# un objetivo: maximizar rendimiento
+nxt = ed.propose_next_runs(design, response=y, n_add=4,
+                           intent="optimize", acquisition="ei")
+print(nxt.best_so_far, nxt.predicted_improvement, nxt.explore_exploit["mode"])
+nxt.surrogate.calibration()          # audita sigma(x) antes de confiar en best_so_far
+
+# multi-objetivo: maximizar rendimiento, minimizar costo
+exp.ingest({"yield": y1, "cost": y2})
+nxt = ed.propose_next_runs(design, response=Y, n_add=4, intent="optimize",
+                           goals={"yield": "max", "cost": "min"})   # -> EHVI
+print(nxt.pareto_front)
+```
+
+La propuesta se pasa a la [capa agéntica](agentic-layer): `interpret` la lee y el
+motor de decisión convierte `predicted_improvement` / `explore_exploit` en
+**stop / augment / refine / redesign** — sin penalizar nunca la caída de
+D-eficiencia que el loop de surrogate puede causar.

@@ -1,0 +1,52 @@
+---
+title: "Definitive Screening Designs"
+description: "El screening clásico de dos niveles tiene un punto ciego: no ve la curvatura, y sus"
+---
+
+## Motivación
+
+El screening clásico de dos niveles tiene un punto ciego: no ve la **curvatura**, y sus
+efectos principales pueden estar sesgados por interacciones de dos factores. Correr un
+estudio de superficie de respuesta después duplica el costo. Los Definitive Screening
+Designs (DSD, Jones & Nachtsheim 2011) colapsan ambas fases en un solo diseño pequeño de
+tres niveles — el avance más importante del screening en la última década.
+
+## Teoría
+
+Para $m$ factores, un DSD usa $2m+1$ corridas construidas a partir de una **matriz de
+conferencia** $C$ de orden $m$ (diagonal cero, $\pm 1$ fuera de la diagonal,
+$C^\top C = (m-1)I$):
+
+$$
+\text{DSD} = \begin{bmatrix} C \\ -C \\ \mathbf{0} \end{bmatrix}.
+$$
+
+El doblez $C / {-}C$ hace que los **efectos lineales** (funciones impares de los niveles
+codificados) sean ortogonales a los **efectos cuadráticos y las interacciones de dos
+factores** (funciones pares). Consecuencias:
+
+- los efectos principales quedan **libres de sesgo** por 2FI y curvatura;
+- cada factor se corre a tres niveles $\{-1, 0, +1\}$, así que los efectos
+  **cuadráticos** son estimables;
+- el diseño **proyecta** a una superficie de respuesta en los pocos factores activos —
+  sin corridas extra.
+
+doekit construye las matrices de conferencia por la construcción de **Paley** ($m = q+1$,
+$q$ primo), cubriendo órdenes $4, 6, 8, 12, 14, \dots$; cuando el menor orden disponible
+supera $m$, las columnas sobrantes se vuelven factores "fantasma" que reducen aún más el
+sesgo de los estimados.
+
+## En doekit
+
+```python
+import doekit as ed
+
+dsd = ed.definitive_screening({f"x{i+1}": (0, 10) for i in range(6)})  # 13 corridas
+ed.evaluate(dsd).vif.max()        # ~1.0  (efectos principales ortogonales)
+```
+
+## Ver también
+
+- Teoría: [Superficie de respuesta](response-surface),
+  [Métricas de evaluación](evaluation-metrics)
+- API: [`definitive_screening`](../api/designs)
