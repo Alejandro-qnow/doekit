@@ -1,0 +1,96 @@
+---
+title: "Servidor MCP"
+description: "La superficie MCP para agentes: el mismo motor de DoE que usan las personas,"
+---
+
+La **superficie MCP para agentes**: el mismo motor de DoE que usan las personas,
+expuesto como tools que un agente LLM puede llamar por el
+[Model Context Protocol](https://modelcontextprotocol.io). Es el lado *agente* del
+flujo de razonamiento de doekit — *recommend → evaluate → propose → decide* —
+construido enteramente a partir de los resultados de doekit (`to_dict()` /
+`interpret` / `decide`). **Nada se inventa: los hechos vienen de doekit; el juicio,
+del agente.**
+
+El servidor MCP es la contraparte del [skill diseñador de experimentos](index):
+el skill es el *cerebro* (proceso, gates, cuándo pausar para el laboratorio); el
+servidor es el *brazo* (las llamadas deterministas).
+
+## Instalar y ejecutar
+
+```bash
+pip install "doekit[mcp]"      # fastmcp; añade ,bo para el surrogate GP real
+python -m doekit.adapters.mcp  # transporte stdio
+```
+
+El repo trae un `.mcp.json` listo (Claude Code / Cursor):
+
+```json
+{
+  "mcpServers": {
+    "doekit": { "command": "python", "args": ["-m", "doekit.adapters.mcp"] }
+  }
+}
+```
+
+`import doekit` nunca requiere fastmcp — el adapter lo importa de forma perezosa,
+solo al construir el servidor.
+
+## Tools
+
+Tres tools de cara al agente cubren el loop principal. Cada respuesta incluye una
+cadena `context_addition` (hechos + advertencias + siguiente paso) lista para
+inyectar en el contexto del agente, más la `interpretation` completa
+(`doekit.Interpretation/1`).
+
+| Tool | Entrada mínima | Devuelve (claves) |
+|------|----------------|-------------------|
+| `recommend` | `goal` (`screening`/`optimization`), `factors` `{nombre:[low,high]}`, `budget` | `method`, `n_runs`, `rationale`, `caveats`, `interpretation`, `context_addition` |
+| `evaluate` | `design_type` (`central_composite`/`box_behnken`), `factors` | `efficiencies` (D/A/G, SPV), `interpretation`, `context_addition` |
+| `propose_and_decide` | `design_type`, `factors`, `response` (longitud = `n_runs`) | `proposed_runs`, `decision`, `diagnostics`, `interpretation`, `calibration` (optimize), `convergence` (con `history`), `context_addition` |
+
+`propose_and_decide` refleja la **capa agéntica completa** — *interpret* + *decide*
+(stop/augment/refine/redesign) + *monitor*: `diagnostics` por paso (power, G-eff,
+presupuesto, incertidumbre) siempre, y un gate de parada por convergencia cuando se
+pasa una `history` por generación. En `intent="optimize"` ajusta un surrogate (GP
+con `doekit[bo]`, si no OLS) y devuelve su **`calibration` LOO** para que el agente
+audite `σ(x)` antes de confiar en `best_so_far`.
+
+## Ejemplo extremo a extremo (el flujo de razonamiento, lado agente)
+
+```jsonc
+// 1) recommend
+{ "goal": "optimization",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]}, "budget": 20 }
+// -> method="Box-Behnken", n_runs=15, + interpretation.context_addition
+
+// 2) evaluate  -> efficiencies (D/A/G, SPV)
+{ "design_type": "box_behnken",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]} }
+
+// 3) propose_and_decide (optimize, con history -> gate de convergencia)
+{ "design_type": "box_behnken",
+  "factors": {"temp":[150,200], "pressure":[1,5], "time":[30,90]},
+  "response": [62,71,68,74,59,70,65,78,66,73,69,80,82,81,83],
+  "intent": "optimize", "acquisition": "ei", "budget": 20,
+  "history": [80.0, 82.0, 82.8, 83.0] }
+// -> decision.action, diagnostics{issues,has_blockers},
+//    calibration{kind:"GPSurrogate", cobertura LOO}, convergence{should_stop}
+```
+
+## Alcance y límites
+
+El adapter in-tree es deliberadamente mínimo (núcleo agent-native, no todo el
+catálogo). Hoy cubre **diseños RSM** (`central_composite` / `box_behnken`), factores
+continuos dados como `[low, high]` y una sola respuesta. Screening / factorial /
+óptimo / mezcla, el loop de laboratorio (`ingest` / `fit` / `report` / `export`) y
+el multi-objetivo (`goals`/EHVI) están en el roadmap — ver la
+[chuleta de API](reference) para toda la superficie de la librería que un agente
+puede alcanzar directamente.
+
+## Reglas que el agente debe respetar
+
+1. Nunca inventar eficiencias, rankings ni respuestas de laboratorio — leer
+   `to_dict()` / `context_addition`.
+2. Siempre `evaluate` antes de declarar un plan apto para el laboratorio.
+3. En `optimize`, leer `calibration` antes de confiar en `best_so_far`.
+4. Argumentar "¿N corridas más?" solo con los deltas de `comparison` / `decision`.

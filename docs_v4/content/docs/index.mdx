@@ -1,0 +1,91 @@
+---
+title: "doekit"
+description: "Design of Experiments (DoE) in Python for people and LLM agents, with evaluation and an agentic layer."
+---
+
+**Design of Experiments (DoE) in Python** for a **hybrid audience** — **people**
+(the lab) and **LLM agents** that consume it **via MCP** — with one deterministic
+engine. doekit doesn't just *build* designs: it **interprets** and **evaluates**
+them, rigorously.
+
+A **semantic layer** ([`interpret`/`Interpretation`](agents/reference)) turns
+metrics into meaning — *what it means, why, what to do, caveats* — **never
+invented**: **facts from doekit, judgment from the user**. Same truth, two
+surfaces: `summary()` / HTML reports for people, `to_dict()` / `for_llm()` for
+agents. Covers screening, response surface, optimal design, mixture/split-plot and
+sequential DoE (**learn** or **optimize**), along the reasoning flow *brief →
+recommend → evaluate → \[lab: ingest\] → analyze → **interpret** → decide
+(stop/augment/refine/redesign) → next*.
+
+<DoeFunnel />
+
+Depends on `numpy`, `pandas`, `scipy` and `statsmodels`. `matplotlib` is optional
+(plots and HTML reports); `doekit[mcp]` serves the agent tools, `doekit[bo]` adds
+the GP surrogate.
+
+```bash
+pip install doekit            # core
+pip install "doekit[plot]"    # with plots (matplotlib)
+pip install "doekit[report]"  # with HTML reports
+```
+
+## The DoE funnel
+
+Classic DoE is a funnel: **screening** (which factors matter?) →
+**response surface** (where is the optimum?), with **optimal design** as an
+alternative route when the standard templates do not fit.
+
+```python
+import doekit as ed
+
+# 1) Screening — Plackett-Burman for 6 factors in 8 runs
+pb = ed.plackett_burman(6)
+
+# 2) Response surface — Box-Behnken in natural units
+bb = ed.box_behnken({"temp": (20, 80), "ph": (3, 9), "conc": (0.1, 0.5)})
+
+# 3) Optimal design — D-optimal subset from a candidate set
+cand = ed.random_design([ed.ContinuousFactor("x1", -1, 1),
+                         ed.ContinuousFactor("x2", -1, 1)], n=200, seed=0)
+cand.model = ed.Model.parse("0 ~ x1 + x2 + x1:x2")
+opt = ed.optimal_design(cand, n_runs=12, criterion="D", n_starts=5, seed=1)
+```
+
+## What sets doekit apart: interpret and evaluate, not just build
+
+Most Python DoE libraries **only generate** designs. doekit adds the other two
+thirds of the work commercial tools (JMP, Design-Expert) do — and does it once for
+both audiences:
+
+1. **Interpret** — the semantic layer reads any result (recommendation,
+   evaluation, fit, proposal, comparison) into `what it means / why / caveats`,
+   same truth for a person or an agent.
+2. **Evaluate** — a reproducible **quality report card**: *"how far is my design
+   from the theoretical optimum?"*
+3. **Build** — the full catalog of generators.
+4. **Decide** — after learn or optimize, `decide_next` maps signals to
+   `stop | augment | refine | redesign` (continue loops back to Design).
+5. **Optimize** — `intent="optimize"` fits a surrogate (OLS or GP) and scores
+   candidates with EI/PI/UCB/EHVI; classical DoE remains `intent="learn"`.
+
+```python
+ev = ed.evaluate(bb, effect_size=1.0, sigma=1.0)
+#   D/A/G-efficiency, SPV distribution (FDS), power per term, VIF, alias structure
+
+print(ed.interpret(ev).for_llm())   # semantic layer: metrics -> meaning (never invented)
+ed.report(bb, response=y)           # HTML report folder for people (needs doekit[report])
+# Aggregate loop: ed.experiment(goal=..., factors=..., budget=...)
+# Agents: pip install "doekit[mcp]" → recommend / evaluate / propose_and_decide
+```
+
+## Where to go next
+
+- **Theory** — one page per methodology, each with *motivation → theory (math) →
+  a doekit example*. Start with [Factors & coding](theory/factors-and-coding).
+- **API reference** — auto-generated from the source docstrings.
+- **Guide** — the [notebooks](guide/notebooks) walk through real, domain-specific
+  cases (chemistry, ML, quantum ML) with the *build → evaluate → benchmark* pattern.
+- **Agents & MCP** — the portable [experiment-designer skill](agents/index) and
+  the [MCP server](agents/mcp) that exposes doekit as agent tools (recommend /
+  evaluate / propose_and_decide).
+- **Sequential DoE** — learn vs optimize in [Sequential DoE](theory/sequential-doe).

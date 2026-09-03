@@ -1,0 +1,203 @@
+---
+title: "Experiment designer skill"
+description: "Agent Skill for Design-of-Experiments with doekit: brief → recommend → evaluate → analyze."
+---
+
+This page is the portable Agent Skill package (`SKILL.md`).
+
+```yaml
+name: doekit-experiment-designer
+description: >-
+  Runs Design-of-Experiments with doekit: brief → recommend → evaluate → lab
+  matrix → ingest responses → analyze → next runs. Use for screening, RSM,
+  optimal designs, design quality (D/A/G, FDS, power, VIF, aliases), sequential
+  augmentation, response optimization (surrogate + acquisition: EI/UCB/EHVI,
+  single or multi-objective/Pareto), autonomous decision (stop/augment/refine/
+  redesign), result interpretation and MCP serving, mixed/blocked analysis,
+  mixture or split-plot, or iterative experimental research (diseño de
+  experimentos, criba, how many runs, bayesian optimization, optimize the yield).
+```
+
+# doekit Experiment Designer
+
+Elicit context, call doekit, interpret outputs, iterate with lab feedback.
+Never invent efficiencies, rankings, or p-values — execute code and read
+`to_dict()` / summaries. Facts from doekit; judgment from you.
+
+| You | doekit |
+|-----|--------|
+| Goal, factors, budget, noise, constraints, trade-offs | Recommend, evaluate, fit, augment, report |
+
+## Default path
+
+```
+DoE Progress:
+- [ ] Brief (required fields)
+- [ ] Experiment.from_goal → evaluate
+- [ ] Persist wave (ed.project / exp.save) when tracing sessions
+- [ ] Approve matrix → lab (pause; do not invent y)
+- [ ] ingest(y) → fit / mixed → wave.sync / conclude
+- [ ] Gate: stop | augment | redesign (read conclusions.json gate_board)
+- [ ] If augment: next → new wave → new matrix → lab again
+```
+
+```python
+import doekit as ed
+
+exp = ed.experiment(goal="screening", factors=6, budget=12)
+# factors={"temp": (20, 80), "ph": (3, 9)} also OK
+exp.evaluate()
+print(exp.plan)                  # run sheet template
+# show rationale, caveats, table, matrix — ask approval
+exp.export_csv("runs.csv")       # lab-ready artifact
+
+# Optional traceable workspace (project → wave_NNN)
+proj = ed.project("my study")    # experiments/experiment_project_my-study/
+wave = exp.save(proj)            # writes doe-configuration/ + data/run_sheet.csv
+
+exp.ingest(y)                    # real lab data only (dict/DataFrame for multi-y)
+fit = exp.fit                    # from ingest(..., fit=True)
+wave.sync(exp)
+conclusions = exp.conclude(wave) # automatic-conclusions/ (facts + gates; no invented stats)
+nxt = exp.next(n_add=4)          # after ingest
+print(nxt.comparison.summary)
+
+snap = exp.to_dict()             # persist / handoff (doekit.Experiment/1)
+
+# Two intents share one call — pick by what the user wants next:
+nxt = exp.next(n_add=4)                       # learn (default): sharpen the MODEL (D/I)
+nxt = exp.next(n_add=4, intent="optimize")    # optimize: move the RESULT (surrogate+EI)
+```
+
+Escape hatches (see [reference.md](reference)): user already chose a generator
+→ build + `evaluate`; batches → `fit_mixed_model` / `blocks=`; mixture /
+split-plot / `Constraints` as in reference.
+
+## Brief
+
+**Required before recommend:** `goal`, factors (count or bounds), `budget`.
+
+| Optional | API |
+|----------|-----|
+| linear / interactions / quadratic | `model_order=` |
+| runs vs precision vs prediction | `priorities=` |
+| irregular region | `constraints=Constraints(irregular=True)` (prefer over `constrained=True`) |
+| effect size / noise | `effect_size=`, `sigma=` |
+| mixture | `mixture=True` or `MixtureFactor` / `simplex_*` |
+| hard-to-change | `hard_to_change=` / `split_plot_design` |
+
+## After evaluate — reply template
+
+```
+Method / runs / model: …
+Why: <rationale>
+Alternatives: <1–2 from table>
+Metrics (from evaluate/to_dict): D/A, G/FDS, VIF, power, aliases as relevant
+Caveats: <all>
+Matrix: show .matrix
+→ Ask: approve this plan for the lab?
+```
+
+Pause until the user provides responses. Do not invent `y`.
+
+## After ingest — gates
+
+| Signal | Action |
+|--------|--------|
+| Goal met / no budget / user stops | Optional `exp.report(...)`; stop |
+| Weak precision/power, budget left, same region | `exp.next(n_add=…)` (learn) / `propose_next_runs`; show Δ; new matrix |
+| Goal is to **maximize/minimize the response** (not model precision) | `exp.next(intent="optimize")`; read `best_so_far`, `predicted_improvement`, `explore_exploit` |
+| Wrong factors/region, mixture/model mismatch, strong LOF vs assumption | Redesign (`from_goal` / new design) — do not silently augment |
+| Aliases / resolution limits | Do not overclaim effects; say what is confounded |
+
+Argue “N more runs?” only with `compare_designs` / `nxt.comparison` deltas, or let
+`exp.decide_next(...)` map the signals to stop | augment | refine | redesign.
+
+## Intent: learn vs optimize
+
+One parameter, two intentions. Choose by the user's next question, not by habit.
+
+| | `intent="learn"` (default) | `intent="optimize"` |
+|--|--|--|
+| Question | "Which factors / how precise?" | "Where is the best setting?" |
+| Engine | D/I-optimal augmentation | Surrogate (GP prior-mean = OLS) + acquisition |
+| Reads | `comparison` deltas | `best_so_far`, `predicted_improvement`, `pareto_front`, `explore_exploit` |
+
+```python
+# single objective
+nxt = exp.next(n_add=4, intent="optimize", acquisition="ei")   # or "ucb" / "pi"
+print(nxt.best_so_far, nxt.explore_exploit["mode"])            # exploring/exploiting/balanced
+
+# multi-objective (Pareto / EHVI)
+exp.ingest({"yield": y1, "cost": y2})
+nxt = exp.next(n_add=4, intent="optimize",
+               goals={"yield": "max", "cost": "min"})           # acquisition defaults to "ehvi"
+print(nxt.pareto_front)
+```
+
+**Trust before you claim an optimum.** The surrogate exposes calibrated `sigma(x)`
+— audit it, don't assume it:
+
+```python
+sur = nxt.surrogate                 # or ed.fit_surrogate(design, y)
+sur.calibration()                   # LOO interval coverage vs nominal
+```
+
+If LOO coverage is far below nominal (over-confident) or data is scarce, prefer
+`learn` first / gather more runs before trusting `best_so_far`. Backend is GP with
+`doekit[bo]` (scikit-learn), else the dependency-free `OLSSurrogate` — a `caveat`
+says which.
+
+## Agentic layer: interpret · decide · monitor
+
+Read structured signals instead of re-deriving stats. All facts come from doekit;
+never invent an action, an optimum, or a Pareto point.
+
+```python
+view = ed.interpret(result)      # Recommendation / Evaluation / Fit / Proposal / Comparison
+view.for_llm()                   # block to add to your context (facts + warnings + next)
+
+# one engine decides stop | augment | refine | redesign
+decision = exp.decide_next(n_add=4, intent="optimize", budget=40)
+decision.action, decision.confidence, decision.for_llm()
+
+# multi-generation loop: stop when best-so-far plateaus
+decision = exp.decide_next(intent="optimize", history=best_so_far_per_gen)
+```
+
+- `decide_next` reads `comparison`/`worth_it` (learn) or `predicted_improvement`/
+  `explore_exploit` (optimize); **optimize is never penalized** for the
+  D-efficiency drop the surrogate loop can cause.
+- Hard gates win first: rank-deficient → `redesign`, budget exhausted /
+  convergence → `stop`.
+- `ed.check_convergence(history, metric_key="best_so_far")` and
+  `ed.diagnose_step(metrics, ...)` are the monitoring primitives behind it.
+- Meta-learning: `ed.ExperimentHistory.from_project(proj)` → `ed.learn_priors(...)` /
+  `ed.historical_recommendation(...)` transfer signals from past waves.
+- Serving over MCP: `python -m doekit.adapters.mcp` (extra `doekit[mcp]`) exposes
+  recommend / evaluate / propose+decide as tools.
+
+## Resume
+
+If a wave or `snap = exp.to_dict()` exists, rebuild — do not restart the brief from scratch:
+
+```python
+# Prefer wave directory when available
+exp = ed.Experiment.load("experiments/experiment_project_my-study/waves/wave_001")
+
+# Or from an in-memory / file snapshot
+exp = ed.Experiment.from_dict(snap)
+```
+
+Read `automatic-conclusions/conclusions.json` for `gate_board` / `rules`; paraphrase only.
+
+## Rules
+
+- Prefer `Experiment` aggregate; call primitives only when needed.
+- Always `evaluate` before declaring a plan fit-for-purpose.
+- Prefer `Constraints(...)` over deprecated `constrained=True`.
+- For `intent="optimize"`: read `surrogate.calibration()` before trusting
+  `best_so_far`; never present a surrogate optimum as certain when coverage is poor.
+- Facts from doekit (`best_so_far`, `pareto_front`, `explore_exploit`, `calibration`);
+  never invent an optimum, an acquisition value, or a Pareto point.
+- API detail: [reference.md](reference).
