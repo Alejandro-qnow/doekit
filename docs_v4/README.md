@@ -15,6 +15,20 @@ yarn dev
 
 Open http://localhost:3000 with your browser to see the result.
 
+### API reference MDX
+
+API pages under `content/docs/api/` (except the overview) are generated from
+Python docstrings via Griffe. Config lives in [`api-config.json`](api-config.json).
+
+After changing public docstrings or the config, regenerate:
+
+```bash
+npm run gen:api
+```
+
+`npm run build` runs `gen:api` automatically via `prebuild` (requires Python +
+`griffe`, available from the package `docs` extras).
+
 ## Explore
 
 In the project, you can see:
