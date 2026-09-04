@@ -70,6 +70,7 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
 export const config = {
   matcher: [
     '/',
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // Skip API, Next internals, and public assets (e.g. /qnow.png)
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };
