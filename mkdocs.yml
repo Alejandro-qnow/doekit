@@ -10,6 +10,7 @@ copyright: MIT License
 
 theme:
   name: material
+  custom_dir: overrides
   language: en
   palette:
     - scheme: default
