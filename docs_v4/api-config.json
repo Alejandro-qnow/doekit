@@ -1,0 +1,61 @@
+{
+  "output_dir": "content/docs/api",
+  "options": {
+    "docstring_style": "numpy",
+    "heading_level": 2,
+    "members_from_all": true,
+    "skip_private": true,
+    "banner": false
+  },
+  "pages": [
+    {
+      "file": "factors-model.mdx",
+      "title": "Factors & model",
+      "description": "Factors (incl. mixture), Model, and terms.",
+      "sections": [
+        { "heading": "Factors", "target": "doekit.domain.factors" },
+        { "heading": "Model", "target": "doekit.domain.model" }
+      ]
+    },
+    {
+      "file": "designs.mdx",
+      "title": "Designs",
+      "description": "Screening, factorial, RSM, DSD, mixture, split-plot, random, optimal, and criteria.",
+      "sections": [
+        { "heading": "Design container", "target": "doekit.domain.design" },
+        { "heading": "Factorial", "target": "doekit.generation.catalog.factorial" },
+        { "heading": "Screening", "target": "doekit.generation.catalog.screening" },
+        { "heading": "Definitive screening", "target": "doekit.generation.catalog.definitive" },
+        { "heading": "Response surface", "target": "doekit.generation.catalog.response_surface" },
+        { "heading": "Random / space-filling", "target": "doekit.generation.catalog.random_design" },
+        { "heading": "Mixture", "target": "doekit.generation.catalog.mixture" },
+        { "heading": "Split-plot", "target": "doekit.generation.catalog.split_plot" },
+        { "heading": "Optimal", "target": "doekit.generation.search.optimal" },
+        { "heading": "Criteria", "target": "doekit.domain.criteria" }
+      ]
+    },
+    {
+      "file": "evaluation.mdx",
+      "title": "Evaluation",
+      "description": "Efficiencies, power, VIF, alias, FDS, and plotting.",
+      "sections": [
+        { "heading": "Metrics", "target": "doekit.assessment.evaluation" },
+        { "heading": "Plotting", "target": "doekit.presentation.render.figures_mpl" }
+      ]
+    },
+    {
+      "file": "analysis-report.mdx",
+      "title": "Analysis & report",
+      "description": "OLS/mixed fit, advisor, Experiment, sequential DoE, HTML report, export.",
+      "sections": [
+        { "heading": "Analysis", "target": "doekit.assessment.analysis" },
+        { "heading": "Design advisor", "target": "doekit.orchestration.advise" },
+        { "heading": "Experiment aggregate", "target": "doekit.orchestration.experiment" },
+        { "heading": "Sequential DoE", "target": "doekit.orchestration.sequential" },
+        { "heading": "BO bridge", "target": "doekit.adapters.bo" },
+        { "heading": "Report", "target": "doekit.presentation.report" },
+        { "heading": "Export", "target": "doekit.presentation.export" }
+      ]
+    }
+  ]
+}
