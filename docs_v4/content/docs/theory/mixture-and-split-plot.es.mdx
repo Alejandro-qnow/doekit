@@ -1,0 +1,32 @@
+---
+title: "Diseños de mezcla y split-plot"
+description: "Desde doekit 0.6, el asesor ya no solo *advierte* sobre mezcla y factores"
+---
+
+Desde **doekit 0.6**, el asesor ya no solo *advierte* sobre mezcla y factores
+difíciles de cambiar: puede proponer diseños reales.
+
+## Mezcla (simplex)
+
+```python
+facs = [ed.MixtureFactor("A"), ed.MixtureFactor("B"), ed.MixtureFactor("C")]
+lat = ed.simplex_lattice(facs, degree=2)
+rec = ed.recommend_design("optimization", facs)
+```
+
+La evaluación usa `SimplexRegion` (no hipercubo).
+
+## Split-plot
+
+```python
+spd = ed.split_plot_design(whole_plot=[...], subplot=[...])
+ed.fit_mixed_model(spd, y, groups="whole_plot_id")
+rec = ed.recommend_design("optimization", factors=[...], hard_to_change=["oven"])
+```
+
+## Constraints
+
+```python
+ed.recommend_design("optimization", factors=3,
+                    constraints=ed.Constraints(irregular=True))
+```

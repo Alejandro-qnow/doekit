@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import 'katex/dist/katex.min.css';
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --Colors-Neutral-100: #0b0f14;
+  --Texto-fuerte-100: #ffffff;
+  --Texto-Debil-100: #d9d4d0;
+  --grid-stroke: color-mix(in srgb, #ffffff 12%, transparent);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+.doe-funnel {
+  margin: 1.25em 0 1.75em;
+}
+
+.doe-funnel svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 54rem;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+.doe-funnel__box {
+  fill: var(--color-fd-secondary, var(--color-fd-card, #1a1f27));
+  stroke: var(--color-fd-primary, #fff);
+  stroke-width: 1.5;
+}
+
+.doe-funnel__line {
+  fill: none;
+  stroke: var(--color-fd-primary, #fff);
+  stroke-width: 1.5;
+}
+
+.doe-funnel__marker {
+  fill: var(--color-fd-primary, #fff);
+}
+
+.doe-funnel__node {
+  fill: var(--color-fd-foreground, #fff);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.doe-funnel__label {
+  fill: var(--color-fd-muted-foreground, #d9d4d0);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.doe-funnel__chip {
+  fill: var(--color-fd-background, #0b0f14);
+  stroke: var(--color-fd-border, #333);
+  stroke-width: 0.75;
+}
+
+.doe-funnel__start,
+.doe-funnel__end-inner {
+  fill: var(--color-fd-primary, #fff);
+}
+
+.doe-funnel__end-outer {
+  fill: var(--color-fd-background, #0b0f14);
+  stroke: var(--color-fd-primary, #fff);
+  stroke-width: 1.75;
+}

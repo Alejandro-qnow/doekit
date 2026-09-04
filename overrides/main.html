@@ -1,6 +1,53 @@
-{% extends "base.html" %} {% block extrahead %} {{ super() }}
-<meta
-  name="google-site-verification"
-  content="nCj4lCjT7rVG9T0_FXBZ_fsoVGeKvxNlG15z4XfixSc"
-/>
+{% extends "base.html" %}
+
+{% import "partials/language.html" as lang with context %}
+
+{% block site_meta %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  {% if page.meta and page.meta.description %}
+    <meta name="description" content="{{ page.meta.description }}">
+  {% elif config.site_description %}
+    <meta name="description" content="{{ config.site_description }}">
+  {% endif %}
+  {% if page.meta and page.meta.author %}
+    <meta name="author" content="{{ page.meta.author }}">
+  {% elif config.site_author %}
+    <meta name="author" content="{{ config.site_author }}">
+  {% endif %}
+  {% if page.canonical_url %}
+    <link rel="canonical" href="{{ page.canonical_url }}">
+  {% endif %}
+  {% if page.previous_page %}
+    <link rel="prev" href="{{ page.previous_page.url | url }}">
+  {% endif %}
+  {% if page.next_page %}
+    <link rel="next" href="{{ page.next_page.url | url }}">
+  {% endif %}
+  {% if config.extra.alternate is iterable %}
+    {% for alt in config.extra.alternate %}
+      <link rel="alternate" href="{{ alt.link | url | absolute_url }}" hreflang="{{ alt.lang | d(lang.t('language')) }}">
+    {% endfor %}
+  {% endif %}
+  {% if "rss" in config.plugins %}
+    <link rel="alternate" type="application/rss+xml" title="{{ lang.t('rss.created') }}" href="{{ 'feed_rss_created.xml' | url }}">
+    <link rel="alternate" type="application/rss+xml" title="{{ lang.t('rss.updated') }}" href="{{ 'feed_rss_updated.xml' | url }}">
+  {% endif %}
+  <link rel="icon" href="{{ config.theme.favicon | url }}">
+  <meta name="generator" content="mkdocs-{{ mkdocs_version }}, mkdocs-material-9.7.7">
+{% endblock %}
+
+{% block extrahead %}
+  {{ super() }}
+  <meta
+    name="google-site-verification"
+    content="nCj4lCjT7rVG9T0_FXBZ_fsoVGeKvxNlG15z4XfixSc"
+  />
+  <link
+    rel="preload"
+    href="{{ 'assets/fonts/roboto-latin-wght-normal.woff2' | url }}"
+    as="font"
+    type="font/woff2"
+    crossorigin
+  />
 {% endblock %}

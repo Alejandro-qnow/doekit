@@ -1,0 +1,91 @@
+.doe-funnel {
+  margin: 1.25em 0 1.75em;
+}
+
+.doe-funnel svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 54rem;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+.doe-funnel__box {
+  fill: var(--md-code-bg-color);
+  stroke: var(--md-primary-fg-color);
+  stroke-width: 1.5;
+}
+
+.doe-funnel__line {
+  fill: none;
+  stroke: var(--md-primary-fg-color);
+  stroke-width: 1.5;
+  marker-end: url(#doe-arrow);
+}
+
+.doe-funnel__marker {
+  fill: var(--md-primary-fg-color);
+}
+
+.doe-funnel__node {
+  fill: var(--md-typeset-color);
+  font-family: var(--md-text-font, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.doe-funnel__label {
+  fill: var(--md-typeset-color);
+  font-family: var(--md-text-font, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.doe-funnel__chip {
+  fill: var(--md-default-bg-color);
+  stroke: var(--md-default-fg-color--lightest);
+  stroke-width: 0.75;
+}
+
+.doe-funnel__start,
+.doe-funnel__end-inner {
+  fill: var(--md-primary-fg-color);
+}
+
+.doe-funnel__end-outer {
+  fill: var(--md-default-bg-color);
+  stroke: var(--md-primary-fg-color);
+  stroke-width: 1.75;
+}
+
+/* Accessibility: code comment contrast (Lighthouse color-contrast) */
+[data-md-color-scheme="default"] {
+  --md-code-hl-comment-color: #686868;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-code-hl-comment-color: #8a8a8a;
+}
+
+.highlight .c1 {
+  color: var(--md-code-hl-comment-color);
+}
+
+.md-footer-meta .md-copyright {
+  color: #8a8a8a;
+}
+
+/* Accessibility: distinguish links without relying on color alone */
+.md-typeset a:not(.md-button):not(.md-icon):not(.headerlink):not(.md-nav__link) {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.md-typeset a:not(.md-button):not(.md-icon):not(.headerlink):not(.md-nav__link):hover {
+  text-decoration-thickness: 2px;
+}

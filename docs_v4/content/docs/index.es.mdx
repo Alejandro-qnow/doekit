@@ -1,11 +1,14 @@
-# doekit
+---
+title: "doekit"
+description: "Diseño de Experimentos (DoE) en Python para personas y agentes LLM, con evaluación y capa agéntica."
+---
 
 **Diseño de Experimentos (DoE) en Python** con un **enfoque híbrido** — **personas**
 (laboratorio) y **agentes LLM** que lo consumen **vía MCP** — sobre un mismo motor
 determinista. doekit no solo *construye* diseños: los **interpreta** y los
 **evalúa**, con rigor.
 
-Una **capa semántica** ([`interpret`/`Interpretation`](agents/reference.md))
+Una **capa semántica** ([`interpret`/`Interpretation`](agents/reference))
 convierte cifras en significado — *qué significa, por qué, qué hacer, con qué
 salvedades* — **sin inventar nada**: **los hechos vienen de doekit; el juicio, del
 usuario**. Misma verdad, dos superficies: `summary()` / reportes HTML para
@@ -14,7 +17,7 @@ respuesta, diseño óptimo, mezcla/split-plot y DoE secuencial (**aprender** u
 **optimizar**), con el flujo de razonamiento *brief → recommend → evaluate → \[lab:
 ingest\] → analyze → **interpret** → decide (stop/augment/refine/redesign) → next*.
 
---8<-- "includes/doekit-flow.html"
+<DoeFunnel locale="es" />
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional
 (gráficas y reportes HTML); `doekit[mcp]` sirve las tools para agentes y
@@ -79,13 +82,13 @@ ed.report(bb, response=y)           # carpeta HTML para personas (requiere doeki
 
 - **Teoría** — una página por metodología, cada una con *motivación → teoría (con
   matemática) → un ejemplo con doekit*. Empieza por
-  [Factores y codificación](theory/factors-and-coding.md).
+  [Factores y codificación](theory/factors-and-coding).
 - **Referencia de API** — autogenerada desde los docstrings del código.
-- **Guía** — los [notebooks](guide/notebooks.md) recorren casos reales por dominio
+- **Guía** — los [notebooks](guide/notebooks) recorren casos reales por dominio
   (química, ML, ML cuántico) con el patrón *construir → evaluar → benchmarkear*.
 - **Agentes y MCP** — el skill portable del
-  [diseñador de experimentos](agents/index.md) y el [servidor MCP](agents/mcp.md)
+  [diseñador de experimentos](agents/index) y el [servidor MCP](agents/mcp)
   que expone doekit como tools para agentes (recommend / evaluate /
   propose_and_decide).
 - **DoE secuencial** — learn vs optimize en
-  [DoE secuencial](theory/sequential-doe.md).
+  [DoE secuencial](theory/sequential-doe).

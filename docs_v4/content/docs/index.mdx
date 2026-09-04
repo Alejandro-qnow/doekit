@@ -1,11 +1,14 @@
-# doekit
+---
+title: "doekit"
+description: "Design of Experiments (DoE) in Python for people and LLM agents, with evaluation and an agentic layer."
+---
 
 **Design of Experiments (DoE) in Python** for a **hybrid audience** — **people**
 (the lab) and **LLM agents** that consume it **via MCP** — with one deterministic
 engine. doekit doesn't just *build* designs: it **interprets** and **evaluates**
 them, rigorously.
 
-A **semantic layer** ([`interpret`/`Interpretation`](agents/reference.md)) turns
+A **semantic layer** ([`interpret`/`Interpretation`](agents/reference)) turns
 metrics into meaning — *what it means, why, what to do, caveats* — **never
 invented**: **facts from doekit, judgment from the user**. Same truth, two
 surfaces: `summary()` / HTML reports for people, `to_dict()` / `for_llm()` for
@@ -14,7 +17,7 @@ sequential DoE (**learn** or **optimize**), along the reasoning flow *brief →
 recommend → evaluate → \[lab: ingest\] → analyze → **interpret** → decide
 (stop/augment/refine/redesign) → next*.
 
---8<-- "includes/doekit-flow.html"
+<DoeFunnel />
 
 Depends on `numpy`, `pandas`, `scipy` and `statsmodels`. `matplotlib` is optional
 (plots and HTML reports); `doekit[mcp]` serves the agent tools, `doekit[bo]` adds
@@ -78,11 +81,11 @@ ed.report(bb, response=y)           # HTML report folder for people (needs doeki
 ## Where to go next
 
 - **Theory** — one page per methodology, each with *motivation → theory (math) →
-  a doekit example*. Start with [Factors & coding](theory/factors-and-coding.md).
+  a doekit example*. Start with [Factors & coding](theory/factors-and-coding).
 - **API reference** — auto-generated from the source docstrings.
-- **Guide** — the [notebooks](guide/notebooks.md) walk through real, domain-specific
+- **Guide** — the [notebooks](guide/notebooks) walk through real, domain-specific
   cases (chemistry, ML, quantum ML) with the *build → evaluate → benchmark* pattern.
-- **Agents & MCP** — the portable [experiment-designer skill](agents/index.md) and
-  the [MCP server](agents/mcp.md) that exposes doekit as agent tools (recommend /
+- **Agents & MCP** — the portable [experiment-designer skill](agents/index) and
+  the [MCP server](agents/mcp) that exposes doekit as agent tools (recommend /
   evaluate / propose_and_decide).
-- **Sequential DoE** — learn vs optimize in [Sequential DoE](theory/sequential-doe.md).
+- **Sequential DoE** — learn vs optimize in [Sequential DoE](theory/sequential-doe).
