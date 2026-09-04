@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "gen:api": "python ../utils/gen_api_mdx.py",
-    "prebuild": "npm run gen:api",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
