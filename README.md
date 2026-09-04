@@ -6,7 +6,7 @@ Una **capa semántica** (`interpret`/`Interpretation`) convierte cifras en signi
 
 Depende de `numpy`, `pandas`, `scipy` y `statsmodels`. `matplotlib` es opcional (gráficos); `doekit[mcp]` sirve las tools para agentes y `doekit[bo]` añade el surrogate GP.
 
-- **Documentación (EN/ES):** [alejandro-qnow.github.io/doekit](https://alejandro-qnow.github.io/doekit/) — flujo DoE → learn|optimize → capa semántica → decide, teoría, API y agentes/MCP.
+- **Documentación (EN/ES):** [doekit](https://doekit.vercel.app) — flujo DoE → learn|optimize → capa semántica → decide, teoría, API y agentes/MCP.
 - **Fuente de la doc:** [`docs/`](docs/) (MkDocs Material).
 - **Notebooks de casos de uso:** [`notebooks/`](notebooks/)
 

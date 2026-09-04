@@ -18,7 +18,10 @@ lighthouse
 
 # Sitio de documentacion generado (mkdocs)
 site/
+overrides/*
 
+article/*
+docs/*
 
 
 # Artefactos de ejemplos
