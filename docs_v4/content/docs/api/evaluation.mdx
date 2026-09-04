@@ -1,15 +1,693 @@
 ---
 title: "Evaluation"
-description: "API module index (autodoc pending)."
+description: "Efficiencies, power, VIF, alias, FDS, and plotting."
 ---
-
-> **API autodoc pending.** These pages previously used MkDocs mkdocstrings (`::: module.path`). Module paths are listed below until Fumadocs autodoc is wired.
 
 ## Metrics
 
+Design quality evaluation metrics.
+
+### `efficiencies()`
+
+```python
+def efficiencies(design: Design, model: Optional[Model] = None, region: Optional[pd.DataFrame] = None, n_region: int = 20000, seed: Optional[int] = None) -> dict
+```
+
+D/A/G efficiencies (%) and scaled-prediction-variance statistics.
+
+Computed in **coded units** (``+/-1``). Values near 100% indicate a design
+close to the theoretical optimum for the fitted model. Mean SPV is the
+I-optimality criterion (smaller is better).
+
+**Formulas**
+
+- **D-eff** ``= 100 * det(X'X)^(1/p) / N`` (100% for an orthogonal design).
+- **A-eff** ``= 100 * p / (N * tr((X'X)^-1))``.
+- **G-eff** ``= 100 * p / max(SPV)`` over the region, with
+  ``SPV(x) = N * x'(X'X)^-1 x`` (general equivalence theorem: ``max SPV >= p``).
+- **I** = mean SPV over the region; also report min/max SPV.
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Model whose matrix is scored; resolved from the design if omitted.
+- `region` (`DataFrame`): Precomputed region sample; a fresh Monte Carlo sample is drawn if omitted.
+- `n_region` (`int`): Region sample size when ``region`` is not provided.
+- `seed` (`int`): Seed for the region sampling.
+
+**Returns**
+
+- `dict`: Keys ``n_runs``, ``n_params``, ``dof``, ``rank_deficient``,
+``D_efficiency``, ``A_efficiency``, ``G_efficiency`` and
+``spv_min``/``spv_mean``/``spv_max``. Efficiencies are ``nan`` when the
+design is rank deficient.
+
+**Notes**
+
+D/A are clamped to ``<= 100%`` (Hadamard / AM-HM). G may slightly exceed
+100% under Monte Carlo region sampling and is likewise clamped.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> eff = ed.efficiencies(ed.full_factorial(3), seed=0)
+>>> eff["D_efficiency"] > 90 and not eff["rank_deficient"]
+True
+```
+
+### `power_analysis()`
+
+```python
+def power_analysis(design: Design, model: Optional[Model] = None, effect_size = 1.0, sigma: float = 1.0, alpha: float = 0.05) -> pd.Series
+```
+
+Per-coefficient power to detect an effect of size ``effect_size``.
+
+Uses a two-sided t-test at level ``alpha`` with ``N - p`` residual degrees
+of freedom. Requires an unsaturated design (``N > p``).
+
+**Formulas**
+
+- ``se_i = sigma * sqrt((X'X)^-1_ii)``
+- non-centrality ``delta_i = effect_size / se_i``
+- power from the non-central ``t`` distribution (normal fallback in the
+  far tails when SciPy's ``nct`` is numerically unstable)
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Model whose terms are powered; resolved from the design if omitted.
+- `effect_size` (`float or array - like`): Anticipated effect size (scalar shared by all terms, or one per term).
+- `sigma` (`float`): Noise standard deviation.
+- `alpha` (`float`): Two-sided significance level.
+
+**Returns**
+
+- `pandas.Series`: Power per model term (index = term names), values in ``[0, 1]``.
+
+**Raises**
+
+- `ValueError`: If ``N <= p`` (a saturated design has no residual degrees of freedom).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> pw = ed.power_analysis(ed.full_factorial(3), effect_size=2.0, sigma=1.0)
+>>> float(pw.min()) > 0.8
+True
+```
+
+### `vif()`
+
+```python
+def vif(design: Design, model: Optional[Model] = None) -> pd.Series
+```
+
+Variance inflation factors of the model terms (intercept excluded).
+
+``VIF = 1`` indicates orthogonality; values ``> 5-10`` signal serious
+multicollinearity. Perfect collinearity yields ``inf`` (not a misleading
+finite value from a pseudoinverse).
+
+**Formulas**
+
+``VIF_j = 1 / (1 - R2_j)`` where ``R2_j`` comes from regressing column
+``j`` on the other non-constant columns (after centering/scaling).
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Model whose terms are checked; resolved from the design if omitted.
+
+**Returns**
+
+- `pandas.Series`: VIF per non-intercept term (empty if the model has no such terms).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> v = ed.vif(ed.full_factorial(3))
+>>> float(v.max()) < 1.01
+True
+```
+
+### `alias_matrix()`
+
+```python
+def alias_matrix(design: Design, model: Optional[Model] = None, alias_model: Optional[Model] = None) -> pd.DataFrame
+```
+
+Alias matrix relating primary-model bias to omitted terms.
+
+Quantifies the bias of the primary-model coefficients (``X1``) induced by
+potential omitted terms (``X2``). If ``alias_model`` is ``None``, the
+two-factor interactions not already in the primary model are used.
+
+**Formulas**
+
+- ``A = (X1'X1)^-1 X1'X2``
+- ``E[beta_hat_1] = beta_1 + A beta_2``
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Primary model ``X1``; resolved from the design if omitted.
+- `alias_model` (`Model`): Model of potentially omitted terms ``X2``; defaults to the 2-factor
+interactions absent from the primary model.
+
+**Returns**
+
+- `DataFrame`: Alias matrix indexed by primary terms and columned by alias terms.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> A = ed.alias_matrix(ed.fractional_factorial(3, generators=["C=AB"]))
+>>> A.shape[0] > 0 and A.shape[1] > 0
+True
+```
+
+### `fds_data()`
+
+```python
+def fds_data(design: Design, model: Optional[Model] = None, region: Optional[pd.DataFrame] = None, n_region: int = 20000, seed: Optional[int] = None) -> pd.DataFrame
+```
+
+Data for the **Fraction of Design Space (FDS) plot**.
+
+Sorts SPV over a Monte Carlo sample of the experimental region. A flat,
+low curve means uniform and precise prediction across the whole region
+(the desirable case). Rank-deficient designs return ``spv`` as ``nan``.
+
+**Formulas**
+
+``SPV(x) = N * x'(X'X)^-1 x``, sorted ascending; ``fraction`` is the
+empirical CDF abscissa ``(i - 0.5) / m`` for ``i = 1..m``.
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Model whose matrix is scored; resolved from the design if omitted.
+- `region` (`DataFrame`): Precomputed region sample; a fresh sample is drawn if omitted.
+- `n_region` (`int`): Region sample size when ``region`` is not provided.
+- `seed` (`int`): Seed for the region sampling.
+
+**Returns**
+
+- `DataFrame`: Columns ``fraction`` (0→1) and ``spv``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> fds = ed.fds_data(ed.full_factorial(3), n_region=500, seed=0)
+>>> list(fds.columns) == ["fraction", "spv"]
+True
+```
+
+### `evaluate()`
+
+```python
+def evaluate(design: Design, model: Optional[Model] = None, effect_size = 1.0, sigma: float = 1.0, alpha: float = 0.05, region: Optional[pd.DataFrame] = None, n_region: int = 20000, seed: Optional[int] = None, report = None) -> DesignEvaluation
+```
+
+Evaluate a design end-to-end and return a :class:`DesignEvaluation`.
+
+Combines :func:`efficiencies`, :func:`power_analysis`, :func:`vif` and
+:func:`fds_data`. Metrics use coded factor units when ``Design.factors``
+is set. Saturated designs yield an empty ``power`` series instead of
+raising.
+
+**Parameters**
+
+- `design` (`Design`): The design to evaluate.
+- `model` (`Model`): Model to score; resolved from the design if omitted.
+- `effect_size` (`float or array - like`): Anticipated effect size for the power analysis (same units as the
+response; non-centrality uses ``effect_size / sigma``).
+- `sigma` (`float`): Noise standard deviation.
+- `alpha` (`float`): Two-sided significance level for the power analysis.
+- `region` (`DataFrame`): Precomputed region sample shared by efficiency and FDS.
+- `n_region` (`int`): Region sample size when ``region`` is not provided.
+- `seed` (`int`): Seed for the region sampling.
+- `report` (`(None, bool, str, Path or dict)`): If not ``None``, a design-quality HTML report is generated and its path
+is stored in ``result.report_path``.
+
+**Returns**
+
+- `DesignEvaluation`: The full quality report card.
+
+**Notes**
+
+See the Formulas sections of :func:`efficiencies`, :func:`power_analysis`,
+:func:`vif` and :func:`fds_data` for the underlying equations.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ev = ed.evaluate(ed.plackett_burman(6), n_region=500, seed=0)
+>>> print(ev.d_efficiency > 80)
+True
+```
+
+### class `DesignEvaluation`
+
+```python
+class DesignEvaluation(n_runs: int, n_params: int, dof: int, efficiencies: dict, power: pd.Series, vif: pd.Series, fds: pd.DataFrame)
+```
+
+Quality report card of a design (result of :func:`evaluate`).
+
+Aggregates efficiencies, power, VIF and FDS into one object. Print or call
+:meth:`summary` for a human-readable card; use :meth:`to_dict` to persist.
+
+**Attributes**
+
+- `n_runs, n_params, dof` (`int`): Number of runs, model parameters and residual degrees of freedom.
+- `efficiencies` (`dict`): Output of :func:`efficiencies`.
+- `power` (`pandas.Series`): Output of :func:`power_analysis` (empty for a saturated design).
+- `vif` (`pandas.Series`): Output of :func:`vif`.
+- `fds` (`DataFrame`): Output of :func:`fds_data`.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ev = ed.evaluate(ed.full_factorial(3), n_region=500, seed=0)
+>>> ev.d_efficiency > 90
+True
+```
+
+#### `DesignEvaluation.n_runs`
+
+```python
+DesignEvaluation.n_runs: int
+```
+
+#### `DesignEvaluation.n_params`
+
+```python
+DesignEvaluation.n_params: int
+```
+
+#### `DesignEvaluation.dof`
+
+```python
+DesignEvaluation.dof: int
+```
+
+#### `DesignEvaluation.efficiencies`
+
+```python
+DesignEvaluation.efficiencies: dict
+```
+
+#### `DesignEvaluation.power`
+
+```python
+DesignEvaluation.power: pd.Series
+```
+
+#### `DesignEvaluation.vif`
+
+```python
+DesignEvaluation.vif: pd.Series
+```
+
+#### `DesignEvaluation.fds`
+
+```python
+DesignEvaluation.fds: pd.DataFrame = field(repr=False)
+```
+
+#### `DesignEvaluation.d_efficiency`
+
+```python
+DesignEvaluation.d_efficiency: float
+```
+
+D-efficiency (%).
+
+#### `DesignEvaluation.a_efficiency`
+
+```python
+DesignEvaluation.a_efficiency: float
+```
+
+A-efficiency (%).
+
+#### `DesignEvaluation.g_efficiency`
+
+```python
+DesignEvaluation.g_efficiency: float
+```
+
+G-efficiency (%).
+
+#### `DesignEvaluation.summary()`
+
+```python
+def DesignEvaluation.summary() -> str
+```
+
+Return a human-readable multi-line summary of the evaluation.
+
+#### `DesignEvaluation.to_dict()`
+
+```python
+def DesignEvaluation.to_dict() -> dict
+```
+
+Serialize to a JSON-safe dict (``schema: doekit.DesignEvaluation/1``).
+
+#### `DesignEvaluation.from_dict()`
+
+```python
+def DesignEvaluation.from_dict(d: dict) -> 'DesignEvaluation'
+```
+
+Rebuild a :class:`DesignEvaluation` from :meth:`to_dict` output.
+
 ## Plotting
 
-```text
-doekit.assessment.evaluation
-doekit.presentation.render.figures_mpl
+Visualization helpers (matplotlib optional, lazy import).
+
+### `half_normal_plot()`
+
+```python
+def half_normal_plot(effects, labels: Optional[Sequence[str]] = None, ax = None, annotate: bool = True)
 ```
+
+Half-normal plot of effects: points off the line are significant.
+
+Daniel plot for screening: inactive effects follow the half-normal reference;
+departures indicate active factors.
+
+**Parameters**
+
+- `effects` (`array - like`): Estimated effects (or coefficients).
+- `labels` (`sequence of str`): One label per effect; defaults to ``e1..em``.
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; a new figure is created if omitted.
+- `annotate` (`bool`): Whether to annotate each point with its label.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ax = ed.presentation.render.figures_mpl.half_normal_plot([0.1, 3.0, -0.2])
+>>> ax.get_ylabel()
+'|Effect|'
+```
+
+### `effects_plot()`
+
+```python
+def effects_plot(effects, labels: Optional[Sequence[str]] = None, ax = None)
+```
+
+Bar chart of signed effects, sorted by ``|effect|``.
+
+**Parameters**
+
+- `effects` (`array - like`): Estimated effects.
+- `labels` (`sequence of str`): One label per effect; defaults to ``e1..em``.
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; a new figure is created if omitted.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.
+
+### `correlation_plot()`
+
+```python
+def correlation_plot(design, model = None, ax = None)
+```
+
+Correlation map of the model-matrix columns (aliasing).
+
+**Parameters**
+
+- `design` (`Design`): The design whose model matrix is correlated.
+- `model` (`Model`): Model to build the matrix; taken from ``design.model`` if omitted.
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; a new figure is created if omitted.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.
+
+### `fds_plot()`
+
+```python
+def fds_plot(design, model = None, ax = None, label = None, surrogate = None, n_region: int = 2000, seed = None, **fds_kwargs)
+```
+
+Fraction of Design Space plot: SPV vs. region fraction (0->1).
+
+A low, flat curve indicates uniform and precise prediction across the whole
+region. When a ``surrogate`` is passed, the curve instead shows the sorted
+predictive **standard deviation** ``sigma(x)`` over a region cover — the
+optimize-intent analogue of SPV (how uniform the surrogate's uncertainty is).
+
+**Formulas**
+
+Design mode: ``SPV(x) = N * x'(X'X)^-1 x`` sorted over the region sample.
+Surrogate mode: ``sigma(x)`` from ``surrogate.predict`` sorted likewise.
+
+**Parameters**
+
+- `design` (`Design or DataFrame`): A :class:`Design`, or a ``DataFrame`` already produced by
+:func:`doekit.fds_data`.
+- `model` (`Model`): Model to build the matrix (only used when ``design`` is a ``Design``).
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; accepts repeated calls to overlay several designs.
+- `label` (`str`): Legend label for the curve.
+- `surrogate` (`Surrogate`): If given, plot sorted ``sigma(x)`` from the surrogate over a sampled
+region cover instead of the design SPV.
+- `n_region` (`int`): Number of region points sampled for the surrogate curve.
+- `seed` (`int`): RNG seed for the surrogate region cover.
+- `**fds_kwargs`: Extra keyword arguments forwarded to :func:`doekit.fds_data`.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ax = ed.presentation.render.figures_mpl.fds_plot(
+...     ed.full_factorial(3), seed=0)
+>>> ax.get_xlabel()
+'Fraction of design region'
+```
+
+### `surrogate_surface()`
+
+```python
+def surrogate_surface(surrogate, x = None, y = None, bounds = None, at = None, measured = None, proposed = None, optimum = None, resolution: int = 60, ax = None, cmap = 'viridis', colorbar: bool = True)
+```
+
+Contour of the surrogate mean ``mu(x)`` over two factors.
+
+Marks measured points, the current optimum, and any proposed runs — the
+"optimum vs. the non-optima" picture.
+
+**Parameters**
+
+- `surrogate` (`Surrogate`): A fitted surrogate (``predict`` + ``factor_names``).
+- `x` (`str`): Factor names for the two axes (first two factors by default).
+- `y` (`str`): Factor names for the two axes (first two factors by default).
+- `bounds` (`dict`): ``name -> (low, high)`` overrides.
+- `at` (`dict`): Fixed values for the other factors (defaults to their midpoint).
+- `measured` (`DataFrame`): Measured design points to overlay (factor columns).
+- `proposed` (`DataFrame`): Proposed next runs to overlay (e.g. ``proposal.added.matrix``).
+- `optimum` (`mapping or array`): Point to star as the current best.
+- `resolution` (`int`): Grid resolution per axis.
+- `ax` (`matplotlib.axes.Axes`)
+- `cmap` (`str`)
+- `colorbar` (`bool`)
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `acquisition_plot()`
+
+```python
+def acquisition_plot(surrogate, best = None, goal = 'max', kind = 'ei', x = None, y = None, bounds = None, at = None, proposed = None, resolution: int = 60, ax = None, cmap = 'magma', kappa: float = 2.0, xi: float = 0.01, colorbar: bool = True)
+```
+
+Contour of an acquisition surface: where the loop wants to sample next.
+
+**Parameters**
+
+- `surrogate` (`Surrogate`)
+- `best` (`float`): Best objective so far (defaults to the best of the training data).
+- `goal` (`('max', 'min')`)
+- `kind` (`('ei', 'ucb', 'pi')`)
+- `x`: As in :func:`surrogate_surface`.
+- `y`: As in :func:`surrogate_surface`.
+- `bounds`: As in :func:`surrogate_surface`.
+- `at`: As in :func:`surrogate_surface`.
+- `resolution`: As in :func:`surrogate_surface`.
+- `ax`: As in :func:`surrogate_surface`.
+- `proposed` (`DataFrame`): Proposed runs to overlay.
+- `kappa` (`float`): Acquisition exploration parameters.
+- `xi` (`float`): Acquisition exploration parameters.
+- `colorbar` (`bool`)
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `convergence_plot()`
+
+```python
+def convergence_plot(history, ax = None, label = None, optimum = None, marker = 'o')
+```
+
+Best-so-far ``y*`` per generation (are we approaching the optimum?).
+
+**Parameters**
+
+- `history` (`array - like`): Best-so-far value per generation (or a 2-column ``(gen, value)``).
+- `ax` (`matplotlib.axes.Axes`)
+- `label` (`str`): Legend label (overlay multiple strategies).
+- `optimum` (`float`): Known optimum, drawn as a dashed reference line.
+- `marker` (`str`)
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `parity_plot()`
+
+```python
+def parity_plot(surrogate, design = None, y = None, ax = None, loo: bool = False)
+```
+
+Predicted vs. observed with ``sigma`` error bars — audit the surrogate.
+
+**Parameters**
+
+- `surrogate` (`Surrogate`)
+- `design` (`optional`): Data to evaluate; defaults to the surrogate's training data.
+- `y` (`optional`): Data to evaluate; defaults to the surrogate's training data.
+- `ax` (`matplotlib.axes.Axes`)
+- `loo` (`bool`): Reserved (in-sample parity by default).
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `calibration_plot()`
+
+```python
+def calibration_plot(surrogate, levels = (0.5, 0.8, 0.95), ax = None, label = None)
+```
+
+LOO interval coverage vs. nominal — the moat plot (is ``sigma`` honest?).
+
+Points on the diagonal mean the surrogate's uncertainty is well-calibrated;
+below the diagonal means it is over-confident.
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `pareto_plot()`
+
+```python
+def pareto_plot(Y, goals = None, columns = None, x = None, y = None, ax = None, annotate: bool = False)
+```
+
+Scatter of two objectives, highlighting the non-dominated (Pareto) front.
+
+**Parameters**
+
+- `Y` (`DataFrame or ndarray`): Objective values (n x m).
+- `goals` (`dict`): ``{column: "max"|"min"}``.
+- `columns` (`sequence of str`): Objective names (taken from a DataFrame when available).
+- `x` (`str or int`): Which two objectives to plot.
+- `y` (`str or int`): Which two objectives to plot.
+- `ax` (`matplotlib.axes.Axes`)
+- `annotate` (`bool`)
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `slice_plot()`
+
+```python
+def slice_plot(surrogate, factor = None, at = None, bounds = None, resolution: int = 120, ax = None, label = None)
+```
+
+1D slice / partial dependence of ``mu(x) +/- sigma`` along one factor.
+
+**Parameters**
+
+- `surrogate` (`Surrogate`)
+- `factor` (`str`): Factor to vary (first factor by default).
+- `at` (`dict`): Fixed values for the other factors (midpoints by default) — e.g. the
+optimum, to slice *through* it.
+- `bounds` (`dict`)
+- `resolution` (`int`)
+- `ax` (`matplotlib.axes.Axes`)
+- `label` (`str`)
+
+**Returns**
+
+- `matplotlib.axes.Axes`
+
+### `power_plot()`
+
+```python
+def power_plot(power, ax = None, alpha_ref: float = 0.8)
+```
+
+Bar chart of per-term power (output of ``power_analysis``).
+
+**Parameters**
+
+- `power` (`pandas.Series or array - like`): Power per model term.
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; a new figure is created if omitted.
+- `alpha_ref` (`float`): Reference power level marked with a dashed line.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ev = ed.evaluate(ed.full_factorial(3), seed=0)
+>>> ax = ed.presentation.render.figures_mpl.power_plot(ev.power)
+>>> ax.get_xlabel()
+'Power'
+```
+
+### `alias_heatmap()`
+
+```python
+def alias_heatmap(alias_df, ax = None)
+```
+
+Heatmap of the alias matrix (output of ``alias_matrix``).
+
+**Parameters**
+
+- `alias_df` (`pandas.DataFrame`): The alias matrix, indexed by primary terms and columned by alias terms.
+- `ax` (`matplotlib.axes.Axes`): Axes to draw on; a new figure is created if omitted.
+
+**Returns**
+
+- `matplotlib.axes.Axes`: The axes drawn on.

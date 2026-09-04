@@ -1,15 +1,840 @@
 ---
 title: "Factors & model"
-description: "API module index (autodoc pending)."
+description: "Factors (incl. mixture), Model, and terms."
 ---
-
-> **API autodoc pending.** These pages previously used MkDocs mkdocstrings (`::: module.path`). Module paths are listed below until Fumadocs autodoc is wired.
 
 ## Factors
 
+Factor abstractions with natural &lt;-> coded conversion.
+
+### class `Factor`
+
+```python
+class Factor
+```
+
+Common interface for experimental factors.
+
+Concrete types (:class:`~doekit.domain.factors.ContinuousFactor`,
+:class:`~doekit.domain.factors.DiscreteFactor`, etc.) implement
+:meth:`encode` / :meth:`decode` between natural and coded units and
+:meth:`to_dict` for serialization. Do not instantiate this ABC directly.
+
+**Attributes**
+
+- `name` (`str`): Factor name (matches a run-matrix column).
+
+#### `Factor.name`
+
+```python
+Factor.name: str
+```
+
+#### `Factor.encode()`
+
+```python
+def Factor.encode(values)
+```
+
+Map natural-unit values to coded units for model construction.
+
+#### `Factor.decode()`
+
+```python
+def Factor.decode(coded)
+```
+
+Map coded values back to natural units.
+
+#### `Factor.to_dict()`
+
+```python
+def Factor.to_dict() -> dict
+```
+
+Serialize the factor to a plain ``dict``.
+
+#### `Factor.is_categorical`
+
+```python
+Factor.is_categorical: bool
+```
+
+Whether the factor is categorical (dummy-coded in the model matrix).
+
+### class `ContinuousFactor`
+
+```python
+class ContinuousFactor(name: str, low: float, high: float)
+```
+
+Continuous factor with standard two-level coding to ``[-1, +1]``.
+
+Natural values on ``[low, high]`` map linearly to coded ``[-1, +1]`` for
+response-surface and optimal-design routines.
+
+**Formulas**
+
+``coded = 2 * (x - low) / (high - low) - 1``
+
+``x = low + (coded + 1) / 2 * (high - low)``
+
+**Parameters**
+
+- `name` (`str`): Factor name.
+- `low` (`float`): Lower bound in natural units.
+- `high` (`float`): Upper bound in natural units.
+
+**Raises**
+
+- `ValueError`: When ``low == high``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> f = ed.ContinuousFactor("temp", 20.0, 80.0)
+>>> float(f.encode(50.0))
+0.0
+```
+
+#### `ContinuousFactor.name`
+
+```python
+ContinuousFactor.name: str
+```
+
+#### `ContinuousFactor.low`
+
+```python
+ContinuousFactor.low: float
+```
+
+#### `ContinuousFactor.high`
+
+```python
+ContinuousFactor.high: float
+```
+
+#### `ContinuousFactor.encode()`
+
+```python
+def ContinuousFactor.encode(values)
+```
+
+#### `ContinuousFactor.decode()`
+
+```python
+def ContinuousFactor.decode(coded)
+```
+
+#### `ContinuousFactor.to_dict()`
+
+```python
+def ContinuousFactor.to_dict() -> dict
+```
+
+### class `DiscreteFactor`
+
+```python
+class DiscreteFactor(name: str, levels: Sequence[float])
+```
+
+Numeric factor with a finite ordered level set.
+
+Encoding uses the range from the smallest to largest level mapped to
+``[-1, +1]``; decoding snaps to the nearest discrete level.
+
+**Formulas**
+
+Same linear coding as :class:`ContinuousFactor` on ``[levels[0], levels[-1]]``;
+decode selects ``argmin |x - level|``.
+
+**Parameters**
+
+- `name` (`str`): Factor name.
+- `levels` (`sequence of float`): Allowed numeric levels (at least two, sorted on init).
+
+**Raises**
+
+- `ValueError`: When fewer than two levels are given.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> f = ed.DiscreteFactor("dose", [10, 20, 30])
+>>> f.decode(-1.0)
+10.0
+```
+
+#### `DiscreteFactor.name`
+
+```python
+DiscreteFactor.name: str
+```
+
+#### `DiscreteFactor.levels`
+
+```python
+DiscreteFactor.levels: Sequence[float]
+```
+
+#### `DiscreteFactor.encode()`
+
+```python
+def DiscreteFactor.encode(values)
+```
+
+#### `DiscreteFactor.decode()`
+
+```python
+def DiscreteFactor.decode(coded)
+```
+
+#### `DiscreteFactor.to_dict()`
+
+```python
+def DiscreteFactor.to_dict() -> dict
+```
+
+### class `CategoricalFactor`
+
+```python
+class CategoricalFactor(name: str, levels: Sequence[object])
+```
+
+Categorical factor with arbitrary level labels.
+
+Encoding maps each level to an integer index ``0 .. k-1`` for dummy coding
+in the model matrix; decoding maps indices back to level labels.
+
+**Parameters**
+
+- `name` (`str`): Factor name.
+- `levels` (`sequence`): Category labels (at least two).
+
+**Raises**
+
+- `ValueError`: When fewer than two levels are given.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> f = ed.CategoricalFactor("cat", ["A", "B"])
+>>> f.encode("B")
+1
+```
+
+#### `CategoricalFactor.name`
+
+```python
+CategoricalFactor.name: str
+```
+
+#### `CategoricalFactor.levels`
+
+```python
+CategoricalFactor.levels: Sequence[object]
+```
+
+#### `CategoricalFactor.is_categorical`
+
+```python
+CategoricalFactor.is_categorical: bool
+```
+
+#### `CategoricalFactor.encode()`
+
+```python
+def CategoricalFactor.encode(values)
+```
+
+#### `CategoricalFactor.decode()`
+
+```python
+def CategoricalFactor.decode(coded)
+```
+
+#### `CategoricalFactor.to_dict()`
+
+```python
+def CategoricalFactor.to_dict() -> dict
+```
+
+### class `MixtureFactor`
+
+```python
+class MixtureFactor(name: str, lower: float = 0.0, upper: float = 1.0)
+```
+
+Mixture component for Scheffé / simplex designs.
+
+Values are **proportions** on ``[lower, upper]`` subject to ``sum x_i = 1``
+across components. Encoding is the identity (proportions are not mapped to
+``±1``); the experimental region is a simplex, not a hypercube.
+
+**Formulas**
+
+Constraint: ``sum_i x_i = 1`` with ``lower_i <= x_i <= upper_i``.
+
+**Parameters**
+
+- `name` (`str`): Component name.
+- `lower` (`float`): Lower bound on the proportion.
+- `upper` (`float`): Upper bound on the proportion.
+
+**Raises**
+
+- `ValueError`: When bounds violate ``0 <= lower < upper <= 1``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> f = ed.MixtureFactor("A")
+>>> float(f.encode(0.5))
+0.5
+```
+
+#### `MixtureFactor.name`
+
+```python
+MixtureFactor.name: str
+```
+
+#### `MixtureFactor.lower`
+
+```python
+MixtureFactor.lower: float = 0.0
+```
+
+#### `MixtureFactor.upper`
+
+```python
+MixtureFactor.upper: float = 1.0
+```
+
+#### `MixtureFactor.is_mixture`
+
+```python
+MixtureFactor.is_mixture: bool
+```
+
+#### `MixtureFactor.encode()`
+
+```python
+def MixtureFactor.encode(values)
+```
+
+Return proportions unchanged (identity coding for Scheffé models).
+
+#### `MixtureFactor.decode()`
+
+```python
+def MixtureFactor.decode(coded)
+```
+
+#### `MixtureFactor.to_dict()`
+
+```python
+def MixtureFactor.to_dict() -> dict
+```
+
+### `factor_from_dict()`
+
+```python
+def factor_from_dict(d: dict) -> Factor
+```
+
+Rebuild a :class:`Factor` from its :meth:`to_dict` output.
+
+**Parameters**
+
+- `d` (`dict`): Serialized factor with a ``type`` key and type-specific fields.
+
+**Returns**
+
+- `Factor`: Restored factor instance.
+
+**Raises**
+
+- `UnknownFactorTypeError`: When ``type`` is not registered.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> f = ed.ContinuousFactor("x", 0, 10)
+>>> ed.factor_from_dict(f.to_dict()).name
+'x'
+```
+
+### `as_factors()`
+
+```python
+def as_factors(spec) -> list[Factor]
+```
+
+Normalize a flexible factor specification to ``list[Factor]``.
+
+Accepts an integer (that many default continuous factors on ``[-1, 1]``), a
+dict ``{name: (low, high)}`` or ``{name: [levels]}``, or a sequence of
+:class:`Factor` instances.
+
+**Parameters**
+
+- `spec` (`int or dict or sequence of Factor`): Factor specification in any supported form.
+
+**Returns**
+
+- `list of Factor`: Normalized factor list.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.as_factors(2)[0].name
+'factor1'
+>>> ed.as_factors({"A": (0, 1)})[0].name
+'A'
+```
+
+### `register_factor_type()`
+
+```python
+def register_factor_type(type_name: str, factory) -> None
+```
+
+Register a factor type key for :func:`factor_from_dict` (open/closed).
+
+**Parameters**
+
+- `type_name` (`str`): Serialization ``type`` key (e.g. ``"continuous"``).
+- `factory` (`callable`): ``factory(dict) -> Factor`` rebuilds a factor from a dict payload.
+
+### `encode_frame()`
+
+```python
+def encode_frame(matrix: pd.DataFrame, factors: Sequence | None) -> pd.DataFrame
+```
+
+Return a copy of ``matrix`` with continuous/discrete columns coded to ±1.
+
+Categorical factors are left raw (the model dummy-codes them). Mixture
+proportions stay as-is (identity coding for Scheffé). Columns with no
+associated factor are assumed already coded.
+
+### `decode_frame()`
+
+```python
+def decode_frame(matrix: pd.DataFrame, factors: Sequence | None) -> pd.DataFrame
+```
+
+Return a copy of ``matrix`` with coded columns decoded to natural units.
+
 ## Model
 
-```text
-doekit.domain.factors
-doekit.domain.model
+Model specification DSL and model-matrix construction.
+
+### class `Intercept`
+
+```python
+class Intercept()
 ```
+
+Constant (intercept) column of ones in the model matrix.
+
+Appears as ``(Intercept)`` in column labels. Omitted in Scheffé mixture
+models where the constraint ``sum x_i = 1`` replaces the intercept.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Intercept().label()
+'(Intercept)'
+```
+
+#### `Intercept.label()`
+
+```python
+def Intercept.label() -> str
+```
+
+#### `Intercept.to_dict()`
+
+```python
+def Intercept.to_dict() -> dict
+```
+
+### class `Main`
+
+```python
+class Main(name: str)
+```
+
+Main-effect term for a single factor.
+
+The model column is the factor column from the run matrix (after any
+coding applied upstream).
+
+**Parameters**
+
+- `name` (`str`): Factor name (must match a run-matrix column).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Main("temperature").label()
+'temperature'
+```
+
+#### `Main.name`
+
+```python
+Main.name: str
+```
+
+#### `Main.label()`
+
+```python
+def Main.label() -> str
+```
+
+#### `Main.to_dict()`
+
+```python
+def Main.to_dict() -> dict
+```
+
+### class `Interaction`
+
+```python
+class Interaction(names: tuple)
+```
+
+Interaction term: element-wise product of factor columns.
+
+**Parameters**
+
+- `names` (`tuple of str`): Factor names whose columns are multiplied (order preserved in label).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Interaction(("A", "B")).label()
+'A:B'
+```
+
+#### `Interaction.names`
+
+```python
+Interaction.names: tuple
+```
+
+#### `Interaction.label()`
+
+```python
+def Interaction.label() -> str
+```
+
+#### `Interaction.to_dict()`
+
+```python
+def Interaction.to_dict() -> dict
+```
+
+### class `Power`
+
+```python
+class Power(name: str, degree: int)
+```
+
+Polynomial term: a factor column raised to an integer degree.
+
+**Parameters**
+
+- `name` (`str`): Factor name.
+- `degree` (`int`): Exponent (typically ``2`` for pure quadratic terms).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Power("x", 2).label()
+'x^2'
+```
+
+#### `Power.name`
+
+```python
+Power.name: str
+```
+
+#### `Power.degree`
+
+```python
+Power.degree: int
+```
+
+#### `Power.label()`
+
+```python
+def Power.label() -> str
+```
+
+#### `Power.to_dict()`
+
+```python
+def Power.to_dict() -> dict
+```
+
+### `Term`
+
+```python
+Term = object
+```
+
+### `term_from_dict()`
+
+```python
+def term_from_dict(d: dict) -> Term
+```
+
+Rebuild a term from its :meth:`to_dict` output.
+
+### class `Model`
+
+```python
+class Model(terms: Sequence[Term], response: Optional[str] = None)
+```
+
+An ordered set of terms that builds a model matrix ``X``.
+
+Terms (:class:`Intercept`, :class:`Main`, :class:`Interaction`,
+:class:`Power`) define columns of ``X`` from a run matrix. Construct via
+:meth:`parse`, :meth:`from_terms`, or presets (:meth:`full_quadratic`,
+:meth:`main_effects`, Scheffé helpers).
+
+**Parameters**
+
+- `terms` (`sequence of Term`): Ordered list of model terms (intercept first when present).
+- `response` (`str`): Response variable name (metadata only; not used in matrix construction).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> m = ed.Model.parse("y ~ x1 + x2 + x1:x2")
+>>> "x1:x2" in [t.label() for t in m.terms]
+True
+```
+
+#### `Model.parse()`
+
+```python
+def Model.parse(formula: str) -> 'Model'
+```
+
+Parse a formula-like string into a :class:`Model`.
+
+Supports ``+`` for main effects, ``:`` for interactions, ``^`` for
+powers, and ``-1`` / ``0`` to omit the intercept.
+
+**Parameters**
+
+- `formula` (`str`): Formula such as ``"y ~ x1 + x2 + x1:x2 + x3^2"`` or ``"x1 + x2"``.
+
+**Returns**
+
+- `Model`: Parsed model with an intercept unless ``-1`` or ``0`` appears.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Model.parse("y ~ x1 + x2").factor_names
+['x1', 'x2']
+```
+
+#### `Model.from_terms()`
+
+```python
+def Model.from_terms(terms: Sequence[Term], response: Optional[str] = None, intercept: bool = True) -> 'Model'
+```
+
+Build a model from an explicit term list.
+
+**Parameters**
+
+- `terms` (`sequence of Term`): Model terms (intercept may be included explicitly).
+- `response` (`str`): Response variable name.
+- `intercept` (`bool`): Insert :class:`Intercept` when absent.
+
+**Returns**
+
+- `Model`: Model with the given terms.
+
+#### `Model.full_quadratic()`
+
+```python
+def Model.full_quadratic(factor_names: Sequence[str], intercept: bool = True) -> 'Model'
+```
+
+Full quadratic response-surface model (main + interactions + squares).
+
+**Parameters**
+
+- `factor_names` (`sequence of str`): Factor names for mains, pairwise interactions, and ``^2`` terms.
+- `intercept` (`bool`): Include an intercept.
+
+**Returns**
+
+- `Model`: Model with all main effects, two-factor interactions, and pure
+quadratics.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> m = ed.Model.full_quadratic(["A", "B"])
+>>> len(m.terms) >= 5  # intercept + 2 mains + interaction + 2 squares
+True
+```
+
+#### `Model.main_effects()`
+
+```python
+def Model.main_effects(factor_names: Sequence[str], intercept: bool = True) -> 'Model'
+```
+
+Main-effects-only model.
+
+**Parameters**
+
+- `factor_names` (`sequence of str`): Factor names for main-effect columns.
+- `intercept` (`bool`): Include an intercept.
+
+**Returns**
+
+- `Model`: Model with one :class:`Main` term per factor.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.Model.main_effects(["x1", "x2"], intercept=False).terms[0]
+Main(name='x1')
+```
+
+#### `Model.scheffe_linear()`
+
+```python
+def Model.scheffe_linear(factor_names: Sequence[str]) -> 'Model'
+```
+
+Scheffé linear mixture model (no intercept).
+
+**Formulas**
+
+``y = sum_i beta_i x_i`` with ``sum_i x_i = 1``.
+
+**Parameters**
+
+- `factor_names` (`sequence of str`): Mixture component names.
+
+**Returns**
+
+- `Model`: Linear Scheffé model without intercept.
+
+#### `Model.scheffe_quadratic()`
+
+```python
+def Model.scheffe_quadratic(factor_names: Sequence[str]) -> 'Model'
+```
+
+Scheffé quadratic mixture model (no intercept).
+
+**Formulas**
+
+Linear Scheffé terms plus cross products ``x_i x_j`` for ``i < j``.
+
+**Parameters**
+
+- `factor_names` (`sequence of str`): Mixture component names.
+
+**Returns**
+
+- `Model`: Quadratic Scheffé model without intercept.
+
+#### `Model.column_names()`
+
+```python
+def Model.column_names(df: pd.DataFrame) -> list[str]
+```
+
+Return model-matrix column labels for a run frame.
+
+**Parameters**
+
+- `df` (`DataFrame`): Run matrix whose columns supply factor values.
+
+**Returns**
+
+- `list of str`: One label per model column (matches :meth:`matrix` column order).
+
+#### `Model.matrix()`
+
+```python
+def Model.matrix(df: pd.DataFrame)
+```
+
+Build the model matrix ``X`` from a run DataFrame.
+
+**Parameters**
+
+- `df` (`DataFrame`): Run matrix with columns for each factor referenced by ``terms``.
+
+**Returns**
+
+- `(ndarray, shape(n_runs, n_params))`: Model matrix ``X``.
+
+#### `Model.factor_names`
+
+```python
+Model.factor_names: list[str]
+```
+
+Unique factor names referenced by all terms (order of first appearance).
+
+#### `Model.to_dict()`
+
+```python
+def Model.to_dict() -> dict
+```
+
+Serialize the model to a plain dict.
+
+**Returns**
+
+- `dict`: Keys ``response`` and ``terms`` (each term's :meth:`~Term.to_dict`).
+
+#### `Model.from_dict()`
+
+```python
+def Model.from_dict(d: dict) -> 'Model'
+```
+
+Rebuild a :class:`Model` from :meth:`to_dict` output.
+
+**Parameters**
+
+- `d` (`dict`): Serialized model.
+
+**Returns**
+
+- `Model`: Restored model instance.

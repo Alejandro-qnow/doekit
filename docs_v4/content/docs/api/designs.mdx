@@ -1,39 +1,1280 @@
 ---
 title: "Designs"
-description: "API module index (autodoc pending)."
+description: "Screening, factorial, RSM, DSD, mixture, split-plot, random, optimal, and criteria."
 ---
-
-> **API autodoc pending.** These pages previously used MkDocs mkdocstrings (`::: module.path`). Module paths are listed below until Fumadocs autodoc is wired.
 
 ## Design container
 
+Design entity and metadata helpers.
+
+### class `Design`
+
+```python
+class Design(matrix: pd.DataFrame, factors: list = list(), model: Optional[Model] = None, metadata: dict = dict())
+```
+
+A generated experimental design with run matrix, factors, and model.
+
+The run matrix holds factor levels (natural or coded units depending on
+generation). Optional :class:`~doekit.domain.factors.Factor` objects and a
+:class:`~doekit.domain.model.Model` enable coding, model-matrix construction,
+and evaluation. Metadata carries design-kind tags (resolution, generators,
+etc.).
+
+Prefer :meth:`replace` or constructing a new instance over mutating fields
+in place so callers keep stable references.
+
+**Parameters**
+
+- `matrix` (`DataFrame`): Run-by-factor table; column names are factor names.
+- `factors` (`list`): Typed factor objects for encode/decode (may be empty).
+- `model` (`Model`): Model attached for matrix construction and evaluation.
+- `metadata` (`dict`): Free-form tags (``kind``, ``resolution``, ``generators``, etc.).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(2)
+>>> d.n_runs, d.n_factors
+(4, 2)
+```
+
+#### `Design.matrix`
+
+```python
+Design.matrix: pd.DataFrame
+```
+
+#### `Design.factors`
+
+```python
+Design.factors: list = field(default_factory=list)
+```
+
+#### `Design.model`
+
+```python
+Design.model: Optional[Model] = None
+```
+
+#### `Design.metadata`
+
+```python
+Design.metadata: dict = field(default_factory=dict)
+```
+
+#### `Design.n_runs`
+
+```python
+Design.n_runs: int
+```
+
+Number of experimental runs (rows in ``matrix``).
+
+#### `Design.n_factors`
+
+```python
+Design.n_factors: int
+```
+
+Number of factor columns in ``matrix``.
+
+#### `Design.factor_names`
+
+```python
+Design.factor_names: list[str]
+```
+
+Column names of the run matrix.
+
+#### `Design.model_matrix()`
+
+```python
+def Design.model_matrix()
+```
+
+Build the model matrix ``X`` from the run matrix and attached model.
+
+**Returns**
+
+- `(ndarray, shape(n_runs, n_params))`: Model matrix in the units implied by ``matrix`` and ``model``.
+
+**Raises**
+
+- `ValueError`: When no model is attached.
+
+#### `Design.replace()`
+
+```python
+def Design.replace(**kwargs) -> 'Design'
+```
+
+Return a new Design with selected fields replaced (copy-on-write).
+
+**Parameters**
+
+- `**kwargs`: Fields to override (``matrix``, ``factors``, ``model``, ``metadata``).
+
+**Returns**
+
+- `Design`: A new instance; the original is unchanged.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(2)
+>>> d2 = d.replace(metadata={"note": "copy"})
+>>> d2.metadata["note"]
+'copy'
+```
+
+#### `Design.to_dict()`
+
+```python
+def Design.to_dict() -> dict
+```
+
+Serialize the design to a JSON-compatible dict.
+
+**Returns**
+
+- `dict`: Schema ``doekit.Design/1`` with ``matrix``, ``factors``, ``model``,
+and ``metadata`` keys.
+
+#### `Design.to_json()`
+
+```python
+def Design.to_json(**kwargs) -> str
+```
+
+Serialize the design to a JSON string.
+
+**Parameters**
+
+- `**kwargs`: Forwarded to :func:`json.dumps` (e.g. ``indent=2``).
+
+**Returns**
+
+- `str`: JSON representation of :meth:`to_dict`.
+
+#### `Design.from_dict()`
+
+```python
+def Design.from_dict(d: dict) -> 'Design'
+```
+
+Rebuild a :class:`Design` from a :meth:`to_dict` payload.
+
+**Parameters**
+
+- `d` (`dict`): Serialized design (schema ``doekit.Design/1``).
+
+**Returns**
+
+- `Design`: Restored design instance.
+
+#### `Design.from_json()`
+
+```python
+def Design.from_json(s: str) -> 'Design'
+```
+
+Rebuild a :class:`Design` from a JSON string.
+
+**Parameters**
+
+- `s` (`str`): JSON from :meth:`to_json`.
+
+**Returns**
+
+- `Design`: Restored design instance.
+
+### class `DesignMetadata`
+
+```python
+class DesignMetadata
+```
+
+Known metadata keys; unknown keys remain allowed via plain dict merge.
+
+#### `DesignMetadata.kind`
+
+```python
+DesignMetadata.kind: str
+```
+
+#### `DesignMetadata.resolution`
+
+```python
+DesignMetadata.resolution: Any
+```
+
+#### `DesignMetadata.aliases`
+
+```python
+DesignMetadata.aliases: Any
+```
+
+#### `DesignMetadata.generators`
+
+```python
+DesignMetadata.generators: Any
+```
+
+#### `DesignMetadata.alpha`
+
+```python
+DesignMetadata.alpha: Any
+```
+
+#### `DesignMetadata.face`
+
+```python
+DesignMetadata.face: Any
+```
+
+#### `DesignMetadata.blocking`
+
+```python
+DesignMetadata.blocking: Any
+```
+
+#### `DesignMetadata.criteria`
+
+```python
+DesignMetadata.criteria: dict
+```
+
+#### `DesignMetadata.criterion`
+
+```python
+DesignMetadata.criterion: str
+```
+
+#### `DesignMetadata.algorithm`
+
+```python
+DesignMetadata.algorithm: str
+```
+
+#### `DesignMetadata.n_starts`
+
+```python
+DesignMetadata.n_starts: int
+```
+
+#### `DesignMetadata.selected_rows`
+
+```python
+DesignMetadata.selected_rows: list
+```
+
+#### `DesignMetadata.report_path`
+
+```python
+DesignMetadata.report_path: str
+```
+
+### `get_kind()`
+
+```python
+def get_kind(metadata: dict) -> Optional[str]
+```
+
+Return the design ``kind`` tag if present.
+
+### `with_kind()`
+
+```python
+def with_kind(metadata: dict, kind: str) -> dict
+```
+
+Return a copy of ``metadata`` with ``kind`` set.
+
 ## Factorial
+
+Full and fractional factorial designs.
+
+### `full_factorial()`
+
+```python
+def full_factorial(levels, names: Optional[Sequence[str]] = None, model: Optional[Model] = None, lazy: bool = False)
+```
+
+Build a full factorial design (all level combinations).
+
+The Cartesian product uses the **first factor varying fastest** (standard
+DoE ordering). Pass ``lazy=True`` to stream rows without materializing the
+full matrix.
+
+**Parameters**
+
+- `levels` (`int or dict or list of list`): An integer (``n`` two-level factors), a dict ``{name: [levels]}`` or a
+list of level lists.
+- `names` (`sequence of str`): Factor names; defaults to ``factor1..factorn``.
+- `model` (`Model`): Model to attach to the design.
+- `lazy` (`bool`): If ``True``, return a row iterator instead of materializing the matrix.
+
+**Returns**
+
+- `Design or iterator of dict`: The full factorial design, or a row iterator when ``lazy=True``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(2)
+>>> d.n_runs, d.n_factors
+(4, 2)
+```
+
+### `fractional_factorial()`
+
+```python
+def fractional_factorial(n_factors: int, generators: Sequence[str], names: Optional[Sequence[str]] = None, model: Optional[Model] = None) -> Design
+```
+
+Build a real ``2^(k-p)`` fractional factorial design.
+
+Base factors form a full ``2^(k-p)`` factorial at ``±1``; generated factors
+are products of base columns. Metadata includes defining relation,
+resolution, and alias classes.
+
+**Formulas**
+
+Generator ``D = ABC`` implies column ``D = A * B * C`` (element-wise product
+of ``±1`` columns). Defining relation from the group generated by generators
+under symmetric difference; resolution = length of shortest word ≠ ``I``.
+
+**Parameters**
+
+- `n_factors` (`int`): Total number of factors ``k``.
+- `generators` (`sequence of str`): Definition of the ``p`` extra factors as products of the base factors,
+e.g. ``["C=AB"]`` for ``2^(3-1)`` or ``["D=AB", "E=AC"]`` for
+``2^(5-2)``. Letters ``A, B, ...`` refer to the factors in order.
+- `names` (`sequence of str`): Factor names; defaults to ``factor1..factorn``.
+- `model` (`Model`): Model to attach to the design.
+
+**Returns**
+
+- `Design`: The fractional design, carrying in ``metadata`` the ``generators``,
+``defining_relation``, ``resolution`` and ``aliases`` (alias classes).
+
+**Raises**
+
+- `ValueError`: When generators are inconsistent with ``n_factors`` or reference unknown
+base factors.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.fractional_factorial(3, ["C=AB"])
+>>> d.metadata["resolution"]
+'III'
+```
 
 ## Screening
 
+Screening designs: Plackett-Burman, fold and a PB check.
+
+### `plackett_burman()`
+
+```python
+def plackett_burman(n_factors: int, names: Optional[list[str]] = None, model: Optional[Model] = None) -> Design
+```
+
+Build a Plackett-Burman screening design for ``n_factors`` factors.
+
+Uses the smallest constructible Hadamard matrix (Sylvester/Paley) with
+``N-1 >= n_factors``. Returns ``N`` runs; surplus columns beyond
+``n_factors`` are dummy factors (possible alias sinks).
+
+**Formulas**
+
+Design columns are zero-sum: ``sum_j d_ij = 0``; orthogonality:
+``D^T D = N I`` (Hadamard property).
+
+**Parameters**
+
+- `n_factors` (`int`): Number of real factors to screen.
+- `names` (`list of str`): Names of the real factors; defaults to ``factor1..factorn``.
+- `model` (`Model`): Model to attach; defaults to a no-intercept main-effects model.
+
+**Returns**
+
+- `Design`: Plackett-Burman design with ``order``, ``factors`` and
+``dummy_factors`` in ``metadata``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.plackett_burman(4)
+>>> d.n_runs >= 4
+True
+```
+
+### `is_plackett_burman()`
+
+```python
+def is_plackett_burman(design, tol: float = 1e-08) -> bool
+```
+
+Check whether a matrix satisfies Plackett-Burman defining properties.
+
+Requires the three defining PB properties (entrywise, not aggregate):
+
+1. entries are ``+/-1`` (balanced two-level design);
+2. **each** column sums to zero (``D.sum(axis=0) == 0``);
+3. columns are entrywise orthogonal: ``D^T D = N I``.
+
+**Formulas**
+
+Orthogonality: ``D^T D = N I`` where ``N`` is the number of runs.
+
+**Parameters**
+
+- `design` (`Design or array - like`): The design (or its matrix) to check.
+- `tol` (`float`): Absolute tolerance for the zero-sum and orthogonality checks.
+
+**Returns**
+
+- `bool`: Whether all three properties hold.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> ed.is_plackett_burman(ed.plackett_burman(4))
+True
+```
+
+### `fold()`
+
+```python
+def fold(design: Design) -> Design
+```
+
+Duplicate a design by appending its sign-reflected mirror (foldover).
+
+Every interaction aliased with a main effect is de-confounded, raising the
+resolution of fractional factorials.
+
+**Parameters**
+
+- `design` (`Design`): The design to fold.
+
+**Returns**
+
+- `Design`: Folded design with ``2N`` runs.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(2)
+>>> ed.fold(d).n_runs == 2 * d.n_runs
+True
+```
+
 ## Definitive screening
+
+Definitive Screening Designs (DSD), Jones & Nachtsheim (2011).
+
+### `definitive_screening()`
+
+```python
+def definitive_screening(factors, extra_center: int = 0, model: Optional[Model] = None) -> Design
+```
+
+Build a Definitive Screening Design (DSD) for the given factors.
+
+In ``2*m+1`` runs (for ``m`` factors) estimates main effects free of
+two-factor interactions and curvature, supports quadratic terms, and
+projects onto active-factor RSM without extra runs (Jones & Nachtsheim,
+2011).
+
+**Formulas**
+
+From conference matrix ``C`` (zero diagonal, ``C^T C = (m-1) I``):
+
+``DSD = [C; -C; 0]`` stacked vertically.
+
+**Parameters**
+
+- `factors` (`int or dict or sequence of Factor`): An integer (``m`` factors coded in ``-1/0/+1``), a dict
+``{name: (low, high)}`` or a list of :class:`Factor` (the matrix is
+decoded to natural units using ``low -> -1``, ``mid -> 0``,
+``high -> +1``).
+- `extra_center` (`int`): Number of additional center points.
+- `model` (`Model`): Model to attach; defaults to a main-effects model with intercept.
+
+**Returns**
+
+- `Design`: DSD in ``2*m0+1`` runs, where ``m0`` is the smallest constructible
+conference order ``>= m``. When ``m0 > m`` surplus columns are dropped
+(phantom factors). ``metadata`` carries ``conference_order``,
+``n_center`` and ``phantom_factors``.
+
+**Raises**
+
+- `ValueError`: If fewer than 2 factors are given.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.definitive_screening(4)
+>>> d.n_factors
+4
+```
 
 ## Response surface
 
+Response-surface designs: Box-Behnken and Central Composite.
+
+### `box_behnken()`
+
+```python
+def box_behnken(factors, center: Optional[int] = None, model: Optional[Model] = None) -> Design
+```
+
+Build a Box-Behnken response-surface design.
+
+Three-level design on the edges of the hypercube (no corner runs), requiring
+at least three factors. Center points improve pure-error estimation.
+
+**Parameters**
+
+- `factors` (`int or dict or sequence of Factor`): An integer (coded columns) or factors with a natural range (the matrix is
+decoded to real units).
+- `center` (`int`): Number of center points; defaults to the classical suggestion for the
+given number of factors.
+- `model` (`Model`): Model to attach; defaults to a full quadratic model.
+
+**Returns**
+
+- `Design`: Box-Behnken design (requires >= 3 factors).
+
+**Raises**
+
+- `ValueError`: If fewer than 3 factors are given.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.box_behnken(3)
+>>> d.n_factors
+3
+```
+
+### `central_composite()`
+
+```python
+def central_composite(factors, center: Sequence[int] = (4, 4), alpha: str = 'orthogonal', face: str = 'circumscribed', model: Optional[Model] = None) -> Design
+```
+
+Build a Central Composite design (CCD).
+
+Combines a factorial block, star (axial) points, and center replicates.
+``alpha`` controls axial distance; ``face`` selects inscribed, faced, or
+circumscribed placement.
+
+**Formulas**
+
+Rotatable: ``alpha = 2^(k/4)``; orthogonal and faced rules as in Box & Wilson.
+
+**Parameters**
+
+- `factors` (`int or dict or sequence of Factor`): An integer (coded columns) or factors with a natural range (decoded).
+- `center` (`sequence of int`): Center points ``(nc_factorial, nc_star)``.
+- `alpha` (`('orthogonal', 'rotatable', 'faced')`): Star-distance rule.
+- `face` (`('circumscribed', 'inscribed', 'faced')`): Placement of the factorial/star blocks.
+- `model` (`Model`): Model to attach; defaults to a full quadratic model.
+
+**Returns**
+
+- `Design`: CCD with ``alpha_value``, ``alpha``, ``face`` and ``center`` in
+``metadata`` (requires >= 2 factors).
+
+**Raises**
+
+- `ValueError`: If fewer than 2 factors are given.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.central_composite(2)
+>>> d.n_factors
+2
+```
+
 ## Random / space-filling
+
+Random designs: sampling from distributions and Latin Hypercube.
+
+### `random_design()`
+
+```python
+def random_design(factors, n: int, seed: Optional[int] = None, model: Optional[Model] = None) -> Design
+```
+
+Generate ``n`` random experimental runs.
+
+Draws independently from ``scipy.stats`` distributions (dict spec) or
+uniform/choice sampling over factor ranges and levels.
+
+**Parameters**
+
+- `factors` (`dict or sequence of Factor`): Either a dict ``{name: dist}`` of ``scipy.stats`` distributions (uses
+``.rvs``), or a list of :class:`Factor` (uniform over the range, or a
+choice of levels).
+- `n` (`int`): Number of runs to sample.
+- `seed` (`int`): Seed for the random generator.
+- `model` (`Model`): Model to attach to the design.
+
+**Returns**
+
+- `Design`: Random design with ``metadata['kind']='RandomDesign'``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.random_design(ed.as_factors(2), n=5, seed=0)
+>>> d.n_runs
+5
+```
+
+### `latin_hypercube()`
+
+```python
+def latin_hypercube(factors, n: int, optimize: bool = False, seed: Optional[int] = None, model: Optional[Model] = None) -> Design
+```
+
+Build a Latin Hypercube design (space-filling sample).
+
+Each factor is stratified into ``n`` equal-probability intervals with one
+sample per interval. Optional discrepancy minimization improves coverage.
+
+**Parameters**
+
+- `factors` (`int or sequence of Factor`): An integer (columns in ``[0, 1)``) or continuous/discrete factors (scaled
+to their natural range).
+- `n` (`int`): Number of runs to sample.
+- `optimize` (`bool`): If ``True``, use scipy's discrepancy-minimizing variant (better space
+coverage).
+- `seed` (`int`): Seed for the sampler.
+- `model` (`Model`): Model to attach to the design.
+
+**Returns**
+
+- `Design`: Latin Hypercube design with ``metadata['kind']='LatinHypercube'``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.latin_hypercube(3, n=10, seed=0)
+>>> d.n_runs, d.n_factors
+(10, 3)
+```
 
 ## Mixture
 
+Mixture designs on the simplex (Scheffé lattice / centroid).
+
+### `simplex_lattice()`
+
+```python
+def simplex_lattice(factors, degree: int = 2, model: Optional[Model] = None) -> Design
+```
+
+Build a ``{q, m}``-simplex lattice design (Scheffé).
+
+Places runs at lattice points where each proportion is a multiple of
+``1/m`` on the ``(q-1)``-simplex. Lower bounds on components shift the
+lattice within the feasible simplex.
+
+**Formulas**
+
+Lattice points: ``x_i = k_i / m`` with ``k_i >= 0`` and ``sum_i k_i = m``.
+
+**Parameters**
+
+- `factors` (`int, dict, or sequence of Factor`): Mixture components (``q``). An ``int`` names them ``x1..xq``.
+- `degree` (`int`): Lattice order ``m`` (proportions are multiples of ``1/m``).
+- `model` (`Model`): Defaults to Scheffé linear (``m=1``) or quadratic (``m>=2``).
+
+**Returns**
+
+- `Design`: Rows are proportions summing to 1; metadata ``kind='SimplexLattice'``.
+
+**Raises**
+
+- `ValueError`: When ``degree < 1`` or lower bounds sum to more than 1.
+- `InapplicableDesign`: When fewer than two mixture components.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.simplex_lattice(3, degree=2)
+>>> d.n_runs > 0 and abs(d.matrix.sum(axis=1) - 1.0).max() < 1e-9
+True
+```
+
+### `simplex_centroid()`
+
+```python
+def simplex_centroid(factors, model: Optional[Model] = None) -> Design
+```
+
+Build a simplex-centroid design (pure blends through overall centroid).
+
+For ``q`` components, includes every point with equal proportions among
+any non-empty subset of components (``2^q - 1`` runs). Covers vertices,
+edge midpoints, face centroids, and the overall centroid.
+
+**Formulas**
+
+For subset ``S`` of size ``r``: ``x_i = 1/r`` if ``i in S``, else ``0``.
+
+**Parameters**
+
+- `factors` (`int, dict, or sequence of Factor`): Mixture components (``q >= 2``).
+- `model` (`Model`): Defaults to Scheffé quadratic.
+
+**Returns**
+
+- `Design`: Centroid design with proportions summing to 1 per row.
+
+**Raises**
+
+- `InapplicableDesign`: When fewer than two mixture components.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.simplex_centroid(3)
+>>> d.n_runs == 2**3 - 1
+True
+```
+
 ## Split-plot
+
+Minimal split-plot design generation (whole-plot / subplot structure).
+
+### `split_plot_design()`
+
+```python
+def split_plot_design(whole_plot, subplot, n_whole_plots: Optional[int] = None, whole_plot_reps: int = 1, model: Optional[Model] = None, seed: Optional[int] = None) -> Design
+```
+
+Build a simple split-plot design (whole-plot / subplot structure).
+
+Whole-plot (hard-to-change) factor combinations define plots; within each
+plot, all subplot factor combinations are run. Plot identity is stored in
+column ``whole_plot_id`` for mixed-model analysis
+(``fit_mixed_model(..., groups="whole_plot_id")``).
+
+**Parameters**
+
+- `whole_plot` (`factor spec`): Hard-to-change factors (int / dict / sequence of Factor).
+- `subplot` (`factor spec`): Easy-to-change factors within a plot.
+- `n_whole_plots` (`int`): If set, sample this many whole-plot level combinations (with
+replacement across the WP factorial); default = full WP factorial
+times ``whole_plot_reps``.
+- `whole_plot_reps` (`int`): Replicates of each whole-plot combination when ``n_whole_plots`` is None.
+- `model` (`Model`): Defaults to main effects of all treatment factors (no plot id).
+- `seed` (`int`): RNG seed when sampling whole plots.
+
+**Returns**
+
+- `Design`: Matrix includes treatment columns plus ``whole_plot_id``.
+
+**Raises**
+
+- `InapplicableDesign`: When whole_plot or subplot is empty or factor types are unsupported.
+- `ValueError`: When factor names overlap or ``n_whole_plots < 1``.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.split_plot_design(whole_plot=1, subplot=2)
+>>> "whole_plot_id" in d.matrix.columns
+True
+```
 
 ## Optimal
 
+Optimal design: KL-exchange (D-optimal) and Fedorov (generic criterion).
+
+### `kl_exchange()`
+
+```python
+def kl_exchange(model_matrix: np.ndarray, experiments: int, design_k: Optional[int] = None, candidates_l: Optional[int] = None, seed_design_size: int = 2, max_iterations: int = 1000, tolerance: float = 1e-09, rng: Optional[np.random.Generator] = None) -> list[int]
+```
+
+Run KL-exchange to select a D-optimal subset of rows.
+
+Greedy seed growth by maximum leverage, then pairwise exchanges between
+low-leverage design rows and high-leverage candidates that improve the
+D-efficiency determinant criterion.
+
+**Formulas**
+
+Exchange gain uses leverage ``h_ii = x_i' (X'X)^-1 x_i``; a swap is accepted
+when the KL delta exceeds 1 (Cook & Nachtsheim exchange for D-optimality).
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix of the candidate set; the returned indices refer to its rows.
+- `experiments` (`int`): Number of runs to select.
+- `design_k` (`int`): Sizes of the exchange pools (worst design rows / best candidates).
+- `candidates_l` (`int`): Sizes of the exchange pools (worst design rows / best candidates).
+- `seed_design_size` (`int`): Size of the initial random seed before greedy growth.
+- `max_iterations` (`int`): Maximum number of exchange iterations.
+- `tolerance` (`float`): Ridge and stopping tolerance.
+- `rng` (`numpy.random.Generator`): Random generator for the seed selection.
+
+**Returns**
+
+- `list of int`: Indices of the selected rows into ``model_matrix``.
+
+### `fedorov_exchange()`
+
+```python
+def fedorov_exchange(model_matrix: np.ndarray, experiments: int, criterion_fn, n_restarts_rows: Optional[int] = None, max_iterations: int = 1000, tolerance: float = 1e-09, rng: Optional[np.random.Generator] = None, moment_matrix: Optional[np.ndarray] = None) -> list[int]
+```
+
+Run Fedorov exchange for a generic optimality criterion.
+
+Tries swapping each design row for each candidate and applies the best swap
+until there is no improvement. Works with any registered criterion (D, A,
+I, etc.).
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix of the candidate set.
+- `experiments` (`int`): Number of runs to select.
+- `criterion_fn` (`callable`): Criterion function ``fn(X)`` (or ``fn(X, moment_matrix)`` for I).
+- `n_restarts_rows` (`int`): Unused placeholder kept for signature compatibility.
+- `max_iterations` (`int`): Maximum number of exchange iterations.
+- `tolerance` (`float`): Minimum gain required to accept a swap.
+- `rng` (`numpy.random.Generator`): Random generator for the initial selection.
+- `moment_matrix` (`ndarray`): Region moment matrix passed to the criterion (used by I-optimality).
+
+**Returns**
+
+- `list of int`: Indices of the selected rows into ``model_matrix``.
+
+### `optimal_design()`
+
+```python
+def optimal_design(candidates: Design, n_runs: int, model: Optional[Model] = None, criterion: str = 'D', algorithm: Optional[str] = None, n_starts: int = 1, seed: Optional[int] = None, tolerance: float = 1e-09, report = None, **kl_kwargs) -> Design
+```
+
+Select ``n_runs`` optimal runs from a candidate set.
+
+Supports D/A/T/G/E/I criteria via KL-exchange (D only) or Fedorov exchange.
+Multi-start restarts escape local optima; final criteria scores are stored
+in metadata.
+
+**Formulas**
+
+Optimizes the chosen criterion (see :func:`~doekit.domain.criteria.d_criterion`
+etc.); D-optimality uses KL-exchange on ``det(X'X)^(1/p)``.
+
+**Parameters**
+
+- `candidates` (`Design`): The candidate set (e.g. from ``random_design`` or ``full_factorial``).
+- `n_runs` (`int`): Number of runs to select.
+- `model` (`Model`): Model to optimize; taken from ``candidates.model`` if omitted.
+- `criterion` (`('D', 'A', 'T', 'G', 'E', 'I')`): Optimality criterion.
+- `algorithm` (`('kl', 'fedorov')`): ``"kl"`` (D only) or ``"fedorov"`` (any criterion); defaults to KL for D
+and Fedorov otherwise.
+- `n_starts` (`int`): Number of independent restarts; the best design is returned.
+- `seed` (`int`): Seed controlling all restarts.
+- `tolerance` (`float`): Ridge and stopping tolerance.
+- `report` (`(None, bool, str, Path or dict)`): If not ``None``, a design-quality HTML report is generated and its path is
+stored in ``result.metadata["report_path"]``.
+- `**kl_kwargs`: Extra keyword arguments forwarded to :func:`kl_exchange`.
+
+**Returns**
+
+- `Design`: Optimal subset with ``criterion``, ``algorithm``, ``selected_rows``
+and all final ``criteria`` in ``metadata``.
+
+**Raises**
+
+- `ValueError`: If no model is available, or ``algorithm`` is unknown.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> cand = ed.random_design(ed.as_factors(2), n=50, seed=0)
+>>> cand.model = ed.Model.main_effects(["factor1", "factor2"])
+>>> opt = ed.optimal_design(cand, n_runs=8, seed=0)
+>>> opt.n_runs
+8
+```
+
 ## Criteria
 
-```text
-doekit.domain.design
-doekit.generation.catalog.factorial
-doekit.generation.catalog.screening
-doekit.generation.catalog.definitive
-doekit.generation.catalog.response_surface
-doekit.generation.catalog.random_design
-doekit.generation.catalog.mixture
-doekit.generation.catalog.split_plot
-doekit.generation.search.optimal
-doekit.domain.criteria
+Optimality criteria over the model matrix ``X`` (``N x p``).
+
+### `TOLERANCE`
+
+```python
+TOLERANCE = 1e-09
 ```
+
+### class `CriterionContext`
+
+```python
+class CriterionContext(moment_matrix: Optional[np.ndarray] = None, tolerance: Optional[float] = None)
+```
+
+Optional extras a criterion may need (e.g. I-optimality moments).
+
+#### `CriterionContext.moment_matrix`
+
+```python
+CriterionContext.moment_matrix: Optional[np.ndarray] = None
+```
+
+#### `CriterionContext.tolerance`
+
+```python
+CriterionContext.tolerance: Optional[float] = None
+```
+
+### `score_criterion()`
+
+```python
+def score_criterion(fn: Callable, model_matrix: np.ndarray, context: CriterionContext | None = None) -> float
+```
+
+Invoke a criterion with a uniform ``(X, context)`` contract.
+
+Legacy callables that only accept ``X`` (or ``X, moment_matrix=...`` for I)
+are adapted here so search/evaluation never special-case signatures.
+
+### `d_criterion()`
+
+```python
+def d_criterion(model_matrix: np.ndarray, tolerance: float = TOLERANCE) -> float
+```
+
+D-optimality score for a model matrix (larger is better).
+
+Normalizes the information matrix by ``N`` before taking the geometric mean
+of eigenvalues. Used by exchange algorithms and design comparison.
+
+**Formulas**
+
+``score = det((X'X) / N)^(1/p)``
+
+where ``N`` is the number of runs and ``p`` is the number of parameters.
+Equivalent to maximizing ``det(X'X)^(1/p) / N``.
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` in coded units.
+- `tolerance` (`float`): Ridge added to ``X'X`` before the determinant (via :func:`info_matrix`).
+
+**Returns**
+
+- `float`: D-optimality score; ``0.0`` when ``X'X`` is singular or non-positive.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.d_criterion(X) > 0.9
+True
+```
+
+### `a_criterion()`
+
+```python
+def a_criterion(model_matrix: np.ndarray, tolerance: float = TOLERANCE) -> float
+```
+
+A-optimality score for a model matrix (larger is better).
+
+Penalizes the average variance of coefficient estimates. Inverse of the
+trace of the variance-covariance matrix, normalized by run count.
+
+**Formulas**
+
+``score = p / tr((X'X)^-1) / N``
+
+where ``p`` is the number of parameters and ``N`` the number of runs.
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` in coded units.
+- `tolerance` (`float`): Ridge added to ``X'X`` before inversion.
+
+**Returns**
+
+- `float`: A-optimality score; ``0.0`` when ``X'X`` is singular.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.a_criterion(X) > 0.9
+True
+```
+
+### `t_criterion()`
+
+```python
+def t_criterion(model_matrix: np.ndarray, tolerance: float = 0.0) -> float
+```
+
+T-optimality score for a model matrix (larger is better).
+
+Rewards designs with large total information (trace of ``X'X``), normalized
+per parameter and run.
+
+**Formulas**
+
+``score = tr(X'X) / N / p``
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` in coded units.
+- `tolerance` (`float`): Ridge added to ``X'X`` (usually zero for T).
+
+**Returns**
+
+- `float`: T-optimality score.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.t_criterion(X) > 0
+True
+```
+
+### `g_criterion()`
+
+```python
+def g_criterion(model_matrix: np.ndarray, tolerance: float = TOLERANCE) -> float
+```
+
+G-optimality score for a model matrix (larger is better).
+
+Minimizes the maximum prediction variance over design points (equivalence
+theorem links G- and D-optimality under regularity).
+
+**Formulas**
+
+``score = p / max(diag(H))``
+
+where ``H = X (X'X)^-1 X'`` is the hat matrix and ``p`` the number of
+parameters. ``max(diag(H))`` is the maximum leverage among design rows.
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` in coded units.
+- `tolerance` (`float`): Ridge added to ``X'X`` before inversion.
+
+**Returns**
+
+- `float`: G-optimality score; ``0.0`` when ``X'X`` is singular.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.g_criterion(X) > 0.9
+True
+```
+
+### `e_criterion()`
+
+```python
+def e_criterion(model_matrix: np.ndarray, tolerance: float = 0.0) -> float
+```
+
+E-optimality score for a model matrix (larger is better).
+
+Maximizes the smallest eigenvalue of the normalized information matrix,
+guarding against near-singular directions in parameter space.
+
+**Formulas**
+
+``score = min(eig(X'X)) / N``
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` in coded units.
+- `tolerance` (`float`): Ridge added to ``X'X`` before eigenvalues are computed.
+
+**Returns**
+
+- `float`: E-optimality score (smallest eigenvalue of ``X'X / N``).
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.e_criterion(X) > 0
+True
+```
+
+### `i_criterion()`
+
+```python
+def i_criterion(model_matrix: np.ndarray, moment_matrix: np.ndarray | None = None, tolerance: float = TOLERANCE) -> float
+```
+
+I-optimality score for a model matrix (larger is better).
+
+Minimizes average prediction variance over a region; the score is the
+reciprocal of that mean variance.
+
+**Formulas**
+
+``mean_var = tr((X'X)^-1 W)`` with ``W = (R'R) / n_R``
+
+where ``R`` is the region moment matrix (defaults to ``X`` when omitted).
+``score = 1 / mean_var``.
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix ``X`` of the selected design.
+- `moment_matrix` (`ndarray`): Model matrix ``R`` evaluated on a region sample (required for true
+I-optimality; defaults to ``X`` when omitted).
+- `tolerance` (`float`): Ridge added to ``X'X`` before inversion.
+
+**Returns**
+
+- `float`: I-optimality score; ``0.0`` when ``X'X`` is singular.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> ed.i_criterion(X) > 0
+True
+```
+
+### `CRITERIA`
+
+```python
+CRITERIA = {'D': d_criterion, 'A': a_criterion, 'T': t_criterion, 'G': g_criterion, 'E': e_criterion, 'I': i_criterion}
+```
+
+### `get_criterion()`
+
+```python
+def get_criterion(name: str)
+```
+
+Look up a criterion function by name.
+
+**Parameters**
+
+- `name` (`str`): Criterion key: ``"D"``, ``"A"``, ``"T"``, ``"G"``, ``"E"``, or ``"I"``
+(case-insensitive).
+
+**Returns**
+
+- `callable`: The registered criterion function.
+
+**Raises**
+
+- `UnknownCriterionError`: When ``name`` is not a registered criterion.
+
+**Examples**
+
+```python
+>>> from doekit.domain.criteria import get_criterion
+>>> import doekit as ed
+>>> fn = get_criterion("D")
+>>> fn is ed.d_criterion
+True
+```
+
+### `all_criteria()`
+
+```python
+def all_criteria(model_matrix: np.ndarray, context: CriterionContext | None = None) -> dict
+```
+
+Evaluate every registered criterion on a design matrix.
+
+Convenience wrapper for reporting; each entry is scored via
+:func:`score_criterion` so I-optimality receives region moments from
+``context`` when provided.
+
+**Parameters**
+
+- `model_matrix` (`(ndarray, shape(N, p))`): Model matrix of the design.
+- `context` (`CriterionContext`): Shared context (tolerance, moment matrix for I).
+
+**Returns**
+
+- `dict`: Mapping ``{"D": score, "A": score, ...}`` with one float per criterion.
+
+**Examples**
+
+```python
+>>> import doekit as ed
+>>> from doekit.domain.criteria import all_criteria
+>>> d = ed.full_factorial(3)
+>>> X = ed.Model.main_effects(d.factor_names).matrix(d.matrix)
+>>> sorted(all_criteria(X)) == ["A", "D", "E", "G", "I", "T"]
+True
+```
+
+### `info_matrix()`
+
+```python
+def info_matrix(X: np.ndarray, tolerance: float) -> np.ndarray
+```
+
+Return the (Tikhonov-regularized) information matrix ``X'X + tol*I``.
+
+### `leverage()`
+
+```python
+def leverage(Xr: np.ndarray, Minv: np.ndarray) -> np.ndarray
+```
+
+Return ``x' M^-1 x`` per row (unscaled prediction variance).
+
+### `inv_info()`
+
+```python
+def inv_info(X_sel: np.ndarray, tolerance: float) -> np.ndarray
+```
+
+Inverse of the ridge-regularized information matrix of selected rows.
